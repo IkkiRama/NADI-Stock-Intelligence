@@ -49,16 +49,21 @@ final class PortfolioValuationService
             ? $allAccounts->where('id', $accountId)->values()
             : $allAccounts;
 
-        $holdingsQuery = PortfolioHolding::query()
-            ->with(['instrument.exchange:id,code', 'instrument.latestQuote', 'instrument.safetyAssessment', 'account.broker:id,code,name'])
+        $allHoldingRows = PortfolioHolding::query()
+            ->with([
+                'instrument.exchange:id,code',
+                'instrument.latestQuote',
+                'instrument.latestFundamentals:instrument_id,market_cap_idr',
+                'instrument.safetyAssessment',
+                'account.broker:id,code,name',
+            ])
             ->where('user_id', $user->id)
-            ->where('portfolio_id', $portfolio->id);
+            ->where('portfolio_id', $portfolio->id)
+            ->get();
 
-        if ($accountId) {
-            $holdingsQuery->where('brokerage_account_id', $accountId);
-        }
-
-        $holdingRows = $holdingsQuery->get();
+        $holdingRows = $accountId
+            ? $allHoldingRows->where('brokerage_account_id', $accountId)->values()
+            : $allHoldingRows;
 
         $totalCashTarget = '0.0000';
         $totalNetContribTarget = '0.0000';
@@ -68,7 +73,30 @@ final class PortfolioValuationService
         $missingFx = [];
         $anyDemo = false;
 
+        // Pre-aggregate per-account equity market value & cost across all accounts in reporting currency
+        $acctEquityMv = [];
+        $acctCostRep = [];
+        $acctHoldingCnt = [];
+        foreach ($allHoldingRows as $ah) {
+            $ainst = $ah->instrument;
+            if (! $ainst) {
+                continue;
+            }
+            $aClose = $ainst->latestQuote ? (string) $ainst->latestQuote->close : null;
+            $aCostLocal = $method === 'fifo' ? (string) $ah->total_cost_fifo : (string) $ah->total_cost_avg;
+            $aMvLocal = $aClose !== null ? Dec::mul((string) $ah->quantity, $aClose, 4) : $aCostLocal;
+            $aFx = $this->fx->rate($ainst->currency, $targetCcy) ?? '0';
+
+            $aid = $ah->brokerage_account_id;
+            $acctEquityMv[$aid] = Dec::add($acctEquityMv[$aid] ?? '0.0000', Dec::mul($aMvLocal, $aFx, 4), 4);
+            $acctCostRep[$aid] = Dec::add($acctCostRep[$aid] ?? '0.0000', Dec::mul($aCostLocal, $aFx, 4), 4);
+            $acctHoldingCnt[$aid] = ($acctHoldingCnt[$aid] ?? 0) + 1;
+        }
+
         $serializedAccounts = [];
+        $accountComparison = [];
+        $wholePortfolioEquity = '0.0000';
+
         foreach ($allAccounts as $acct) {
             $anyDemo = $anyDemo || (bool) $acct->is_demo;
             $fxAcct = $this->fx->rate($acct->base_currency, $targetCcy);
@@ -77,14 +105,28 @@ final class PortfolioValuationService
             }
 
             $realizedAcct = $method === 'fifo' ? (string) $acct->realized_pnl_fifo : (string) $acct->realized_pnl_avg;
+            $mult = $fxAcct ?? '0';
+            $cashRep = Dec::mul((string) $acct->cash_balance, $mult, 4);
+            $contribRep = Dec::mul((string) $acct->net_contributions, $mult, 4);
+            $realizedRep = Dec::mul($realizedAcct, $mult, 4);
+            $divRep = Dec::mul((string) $acct->dividends_received, $mult, 4);
+            $feesRep = Dec::mul((string) $acct->fees_paid, $mult, 4);
 
-            if (! $accountId || $acct->id === $accountId) {
-                $mult = $fxAcct ?? '0';
-                $totalCashTarget = Dec::add($totalCashTarget, Dec::mul((string) $acct->cash_balance, $mult, 4), 4);
-                $totalNetContribTarget = Dec::add($totalNetContribTarget, Dec::mul((string) $acct->net_contributions, $mult, 4), 4);
-                $totalRealizedTarget = Dec::add($totalRealizedTarget, Dec::mul($realizedAcct, $mult, 4), 4);
-                $totalDividendsTarget = Dec::add($totalDividendsTarget, Dec::mul((string) $acct->dividends_received, $mult, 4), 4);
-                $totalFeesTarget = Dec::add($totalFeesTarget, Dec::mul((string) $acct->fees_paid, $mult, 4), 4);
+            $eqMvRep = $acctEquityMv[$acct->id] ?? '0.0000';
+            $eqCostRep = $acctCostRep[$acct->id] ?? '0.0000';
+            $acctTotalEquity = Dec::add($eqMvRep, $cashRep, 4);
+            $acctUnrlRep = Dec::sub($eqMvRep, $eqCostRep, 4);
+            $acctUnrlPct = Dec::cmp($eqCostRep, '0') > 0 ? Dec::div($acctUnrlRep, $eqCostRep, 8) : null;
+            $acctTotalPnl = Dec::add(Dec::add($realizedRep, $acctUnrlRep, 4), $divRep, 4);
+            $wholePortfolioEquity = Dec::add($wholePortfolioEquity, $acctTotalEquity, 4);
+
+            $included = ! $accountId || $acct->id === $accountId;
+            if ($included) {
+                $totalCashTarget = Dec::add($totalCashTarget, $cashRep, 4);
+                $totalNetContribTarget = Dec::add($totalNetContribTarget, $contribRep, 4);
+                $totalRealizedTarget = Dec::add($totalRealizedTarget, $realizedRep, 4);
+                $totalDividendsTarget = Dec::add($totalDividendsTarget, $divRep, 4);
+                $totalFeesTarget = Dec::add($totalFeesTarget, $feesRep, 4);
             }
 
             $serializedAccounts[] = [
@@ -103,12 +145,42 @@ final class PortfolioValuationService
                 'is_demo' => (bool) $acct->is_demo,
                 'last_reconciled_at' => $acct->last_reconciled_at?->toIso8601String(),
             ];
+
+            $accountComparison[] = [
+                'id' => $acct->id,
+                'account_name' => $acct->account_name,
+                'broker_code' => $acct->broker?->code ?? 'MANUAL',
+                'broker_name' => $acct->broker?->name ?? 'Manual',
+                'base_currency' => $acct->base_currency,
+                'included' => $included,
+                'holdings_count' => $acctHoldingCnt[$acct->id] ?? 0,
+                'cash_balance_reporting' => $cashRep,
+                'market_value_reporting' => $eqMvRep,
+                'total_cost_reporting' => $eqCostRep,
+                'total_equity_reporting' => $acctTotalEquity,
+                'net_contributions_reporting' => $contribRep,
+                'unrealized_pnl_reporting' => $acctUnrlRep,
+                'unrealized_pnl_pct' => $acctUnrlPct,
+                'realized_pnl_reporting' => $realizedRep,
+                'dividends_received_reporting' => $divRep,
+                'fees_paid_reporting' => $feesRep,
+                'total_pnl_reporting' => $acctTotalPnl,
+                'is_demo' => (bool) $acct->is_demo,
+            ];
         }
+
+        foreach ($accountComparison as &$ac) {
+            $ac['portfolio_share_pct'] = Dec::cmp($wholePortfolioEquity, '0') > 0
+                ? (Dec::div(Dec::mul($ac['total_equity_reporting'], '100', 6), $wholePortfolioEquity, 2) ?? '0.00')
+                : '0.00';
+        }
+        unset($ac);
 
         $totalMarketValueTarget = '0.0000';
         $totalCostTarget = '0.0000';
         $totalDailyChangeTarget = '0.0000';
         $latestQuoteDate = null;
+        $latestSyncedAt = null;
 
         $accountHoldings = [];
         $consolidatedMap = [];
@@ -132,6 +204,19 @@ final class PortfolioValuationService
             if ($asOf && ($latestQuoteDate === null || $asOf > $latestQuoteDate)) {
                 $latestQuoteDate = $asOf;
             }
+            $refreshedIso = $quote?->refreshed_at?->toIso8601String();
+            if ($refreshedIso && ($latestSyncedAt === null || $refreshedIso > $latestSyncedAt)) {
+                $latestSyncedAt = $refreshedIso;
+            }
+
+            $mcapIdr = $inst->latestFundamentals?->market_cap_idr !== null ? (string) $inst->latestFundamentals->market_cap_idr : null;
+            $sizeTier = match (true) {
+                $mcapIdr === null => 'unclassified',
+                Dec::cmp($mcapIdr, '100000000000000') >= 0 => 'large_cap',
+                Dec::cmp($mcapIdr, '10000000000000') >= 0 => 'mid_cap',
+                Dec::cmp($mcapIdr, '0') > 0 => 'small_cap',
+                default => 'unclassified',
+            };
 
             $qty = (string) $h->quantity;
             $costTotal = $method === 'fifo' ? (string) $h->total_cost_fifo : (string) $h->total_cost_avg;
@@ -173,6 +258,9 @@ final class PortfolioValuationService
                 'name' => $inst->name,
                 'exchange_code' => $inst->exchange->code,
                 'sector' => $inst->sector,
+                'industry' => $inst->industry,
+                'country_code' => $inst->country_code,
+                'size_tier' => $sizeTier,
                 'currency' => $inst->currency,
                 'quantity' => $qty,
                 'cost_per_share' => $costPerShare,
@@ -197,6 +285,10 @@ final class PortfolioValuationService
                     'name' => $inst->name,
                     'exchange_code' => $inst->exchange->code,
                     'sector' => $inst->sector,
+                    'industry' => $inst->industry,
+                    'country_code' => $inst->country_code,
+                    'market_cap_idr' => $mcapIdr,
+                    'size_tier' => $sizeTier,
                     'currency' => $inst->currency,
                     'quantity' => '0.000000',
                     'total_cost' => '0.0000',
@@ -261,6 +353,16 @@ final class PortfolioValuationService
 
         usort($consolidatedHoldings, fn ($a, $b) => Dec::cmp($b['market_value_reporting'], $a['market_value_reporting']));
 
+        $prevMarketValueTarget = Dec::sub($totalMarketValueTarget, $totalDailyChangeTarget, 4);
+        $dailyChangePct = Dec::cmp($prevMarketValueTarget, '0') > 0
+            ? Dec::div($totalDailyChangeTarget, $prevMarketValueTarget, 8)
+            : null;
+        $riskStatus = match (true) {
+            count($consolidatedHoldings) === 0 => 'empty',
+            count($safetyFlaggedIds) > 0 => 'attention_required',
+            default => 'balanced',
+        };
+
         return [
             'portfolio' => [
                 'id' => $portfolio->id,
@@ -284,14 +386,18 @@ final class PortfolioValuationService
                 'total_pnl' => $totalPnlTarget,
                 'return_on_contributions_pct' => $returnOnContribPct,
                 'daily_change' => $totalDailyChangeTarget,
+                'daily_change_pct' => $dailyChangePct,
                 'holdings_count' => count($consolidatedHoldings),
                 'accounts_count' => $filteredAccounts->count(),
                 'safety_flagged_count' => count($safetyFlaggedIds),
+                'risk_status' => $riskStatus,
                 'as_of' => $latestQuoteDate,
+                'last_synced_at' => $latestSyncedAt,
                 'is_demo' => $anyDemo,
                 'missing_fx' => array_values(array_unique($missingFx)),
             ],
             'accounts' => $serializedAccounts,
+            'accountComparison' => $accountComparison,
             'consolidatedHoldings' => $consolidatedHoldings,
             'accountHoldings' => $accountHoldings,
         ];

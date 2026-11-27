@@ -82,7 +82,7 @@ class PortfolioAndCalculatorsTest extends TestCase
             ])
             ->assertRedirect();
 
-        // Portfolio page renders consolidated holding, stock detail shows holdingStatus, heatmap portfolio scope includes BBCA
+        // Portfolio page renders consolidated holding, allocation, concentration, history, stock detail, heatmap portfolio scope
         $this->actingAs($userA)
             ->get('/portfolio')
             ->assertOk()
@@ -90,7 +90,25 @@ class PortfolioAndCalculatorsTest extends TestCase
                 ->component('portfolio/index')
                 ->where('summary.holdings_count', 1)
                 ->has('consolidatedHoldings', 1)
+                ->has('accountComparison', 1)
+                ->has('allocations.by_sector', 1)
+                ->has('allocations.by_broker', 1)
+                ->where('concentration.hhi_holdings', '10000.00')
+                ->has('historySeries')
             );
+
+        // Update concentration thresholds
+        $this->actingAs($userA)
+            ->patch('/portfolio/concentration-thresholds', [
+                'max_single_stock_pct' => 20,
+                'max_top3_pct' => 50,
+                'max_sector_pct' => 35,
+                'max_country_pct' => 75,
+                'max_broker_pct' => 70,
+                'max_currency_pct' => 80,
+                'hhi_elevated_threshold' => 2000,
+            ])
+            ->assertRedirect();
 
         $this->actingAs($userA)
             ->get('/stocks/idx/bbca')

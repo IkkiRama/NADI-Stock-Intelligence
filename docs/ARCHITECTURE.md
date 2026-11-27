@@ -17,7 +17,7 @@ NADI is a monolithic web application designed for conventional cPanel PHP/MySQL 
 - `app/Domain/StockSafety/`: `StockSafetyService` (statistical anomaly rules, liquidity check, fundamental divergence, regulatory flags, safeguard scoring).
 - `app/Domain/TradingSignals/`: `SmartEntryExitService` (horizon-specific tick-aligned setups, safeguard suppression, non-forced stances) and `PositionSizingCalculator` (exact `Dec` lot-aware sizing with fees & slippage).
 - `app/Domain/PortfolioAccounting/`: `PortfolioAccountingService` (exact `Dec` Weighted-Average & FIFO cost basis, cash ledger, corporate actions, transfers, immutable reversals), `BrokerCsvImporter` (Stockbit, Ajaib, IPOT, BIONS, MOST, NADI Standard with SHA-256 dedupe), and `PortfolioReconciliationService`.
-- `app/Domain/Portfolio/`: `PortfolioValuationService` (cross-currency IDR/multi-currency valuation & stock-level holding status).
+- `app/Domain/Portfolio/`: `PortfolioValuationService` (cross-currency IDR/multi-currency valuation, multi-account comparison & stock-level holding status), `PortfolioAnalyticsCommandCenterService` (multi-dimensional allocation & HHI concentration engine), and `PortfolioHistoryService` (batch EOD historical cost basis vs market value equity curve).
 - `app/Domain/Notifications/`: `AlertEvaluator` (idempotent daily price, safety, and signal alerts).
 - `app/Domain/Administration/`: `AuditLogger` for immutable admin action logs.
 

@@ -59,6 +59,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('portfolio', [PortfolioController::class, 'index'])->name('portfolio.index');
     Route::post('portfolio/accounts', [PortfolioController::class, 'storeAccount'])->name('portfolio.accounts.store');
     Route::patch('portfolio/preferences', [PortfolioController::class, 'updatePreferences'])->name('portfolio.preferences.update');
+    Route::patch('portfolio/concentration-thresholds', [PortfolioController::class, 'updateConcentrationThresholds'])->name('portfolio.thresholds.update');
     Route::post('portfolio/transactions', [PortfolioController::class, 'storeTransaction'])->name('portfolio.transactions.store');
     Route::post('portfolio/transactions/{portfolioTransaction}/reverse', [PortfolioController::class, 'reverseTransaction'])->name('portfolio.transactions.reverse');
     Route::post('portfolio/import-csv', [PortfolioController::class, 'importCsv'])->name('portfolio.import-csv');

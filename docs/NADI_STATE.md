@@ -2,61 +2,50 @@
 
 **Last Updated**: 2026-11-27
 **Project Path**: `D:\laragon\www\nadi`
-**Current Phase**: Phase 4 Complete — Ready for **Phase 5 (Portfolio Command Center)**
+**Current Phase**: Phase 5 Complete — Ready for **Phase 6 (Advanced Performance & Benchmark Center)**
 
 ---
 
 ## 1. Completed Modules
-### Phase 0 & Phase 1 (Foundation & Premium UI)
-- Laravel 12.74 + Inertia v2 + Ziggy + React 19 + TypeScript + Tailwind CSS v4 monolith (`0be0930`).
-- Authentication, `EnsureUserIsActive`, RBAC + audit-logged Admin Panel (`/admin`), ID/EN i18n, Workspace Preferences (`/settings/preferences`), Editorial Fintech design system, Command Palette (`Ctrl/Cmd+K`), Overview Dashboard (`/dashboard`), Global Markets (`/markets`, `/markets/indices/{code}`), Stock Explorer (`/stocks`), Watchlist, and PWA asset cache.
+### Phase 0 – Phase 4 Summary
+- **Phase 0 & 1** (`0be0930`): Laravel 12.74 + Inertia v2 + Ziggy + React 19 + TypeScript + Tailwind CSS v4 monolith, Auth, RBAC + Audit Admin, ID/EN i18n, Workspace Preferences, Command Palette, Dashboard, Global Markets, Stock Explorer, Watchlist, PWA.
+- **Phase 2** (`fee3db8`): `FxConversionService`, `CsvMarketImporter` + `CsvSanitizer`, `ConfigurableHttpEodProvider`, `FundamentalCalculator`, `TechnicalIndicatorService`, `StockScoringService`, Heatmap, Screener, upgraded Stock Detail & `PriceChart`.
+- **Phase 3** (`95c5bca`): `StockSafetyService`, `SmartEntryExitService`, `PositionSizingCalculator`, `AlertEvaluator`, `/opportunities`, `/stock-safety`, `/entry-exit`, `/alerts-calendar`, `/admin/safety-rules`.
+- **Phase 4** (`176ae34`): `PortfolioAccountingService` (Weighted-Average + FIFO cost basis, cash vs returns, fees/taxes, splits/bonus/rights, transfers, immutable reversals), `BrokerCsvImporter`, `PortfolioReconciliationService`, `/portfolio`, `/calculators`, `/heatmap?scope=portfolio`.
 
-### Phase 2 (Market Intelligence)
-- **FX & Importers**: `FxConversionService`, `CsvMarketImporter` + `CsvSanitizer`, `ConfigurableHttpEodProvider`, `/admin/imports`, `php artisan nadi:refresh-analytics` (`fee3db8`).
-- **Quantitative Analytics**: `FundamentalCalculator`, `TechnicalIndicatorService`, `StockScoringService` (`/admin/scoring`).
-- **Market Intelligence UI**: **Market Heatmap** (`/heatmap`), **Stock Screener** (`/screener`), upgraded **Stock Detail** & `PriceChart`.
-
-### Phase 3 (Stock Safety, Trading Signals, Position Sizing & Alerts)
-- `StockSafetyService` (statistical anomaly & regulatory risk 0–100 + safeguard triggers), `SmartEntryExitService` (`short_term`/`swing`/`long_term`, tick-aligned levels, safeguard suppression, non-forced stances), `PositionSizingCalculator` (lot-aware exact `Dec` sizing), `AlertEvaluator`, `/opportunities`, `/stock-safety`, `/entry-exit`, `/alerts-calendar`, `/admin/safety-rules`, and `PriceChart` level/signal overlays (`95c5bca`).
-
-### Phase 4 (Multi-Broker Portfolio Accounting & Financial Calculators)
-- **Database Schema & Seeders**: `brokers`, `portfolios`, `brokerage_accounts`, `portfolio_transactions` (immutable/reversible ledger with `reversal_of_id` & `dedupe_hash`), `portfolio_holdings`, `portfolio_cost_lots` (open FIFO tax/cost lots), and `portfolio_reconciliations`; seeded `9` brokers (`BrokerSeeder`) and cross-currency demo portfolio (`DemoPortfolioSeeder`: `Stockbit Reguler (Demo)` IDR + `Interactive Brokers (Demo)` USD).
-- **Exact Accounting Engine (`PortfolioAccountingService`)**:
-  - Cleanly separates `cash_deposit`/`cash_withdrawal` (`net_contributions`) from investment returns.
-  - Computes **Weighted Average** and **FIFO** cost basis simultaneously, satisfying the conservation invariant `realized_avg + unrealized_avg == realized_fifo + unrealized_fifo`.
-  - Handles brokerage fees, exchange fees, dividend withholding taxes, stock splits, reverse splits, bonus shares, rights issues, cross-account transfers (`stock_transfer_out` / `stock_transfer_in`), oversell guards, and immutable audit reversals (`reverseTransaction`).
-- **Valuation, CSV Import & Reconciliation**:
-  - `PortfolioValuationService` (consolidated & per-account valuation in user reporting currency `IDR`/`USD`/`SGD`/`CNY`/`HKD` + Stock Detail `holdingStatus`).
-  - `BrokerCsvImporter` (Stockbit, Ajaib, IPOT, BIONS, MOST, NADI Standard adapters, IDX lot-to-share normalization, SHA-256 duplicate prevention).
-  - `PortfolioReconciliationService` (as-of statement cash & share quantity verification).
-- **UI & Calculators**:
-  - **My Portfolio** (`/portfolio`): multi-broker KPIs, Weighted Average/FIFO switcher, Add Account modal (explicit no-credentials/OTP guarantee), Record Transaction & Reversal modals, Ledger CSV export, Broker CSV Import tab, and Reconciliation tab.
-  - **Financial Calculators** (`/calculators`): Lot/Fee/Break-Even & Realized Profit, Multi-Tranche Average Cost, Position Sizing, Dividend & Yield-on-Cost, Compound Growth (CAGR), and FX Converter.
-  - Activated **Portfolio Heatmap** (`/heatmap?scope=portfolio`), **Dashboard** live `portfolio_summary` widget, and **Stock Detail** `holdingStatus` contextual panel.
+### Phase 5 (Portfolio Command Center)
+- **Command Center Valuation (`PortfolioValuationService`)**:
+  - Full consolidated KPI strip (Total Equity, Equity Market Value, Total Invested Cost, Net Contributions, Cash Balance, Unrealized P&L, Realized P&L + Dividends, Total P&L + Return %, Daily Change + %, Holdings/Accounts count, Risk Status, Last Synced Timestamp).
+  - Side-by-side **Multi-Account Comparison** (`accountComparison` across IDR & global USD accounts with portfolio weight shares).
+- **Historical Cost Basis vs Market Value (`PortfolioHistoryService`, `CostVsMarketChart`)**:
+  - Reconstructs daily `invested_cost`, `market_value`, `cash_balance`, `net_contributions`, `total_equity`, and `unrealized_pnl` chronologically in bounded batch queries under both Weighted-Average & FIFO methods, visualized with Apache ECharts time-series (`1M`/`3M`/`6M`/`YTD`/`1Y`) and per-stock Cost vs Market grouped bar charts.
+- **Multi-Dimensional Asset Allocation & Concentration (`PortfolioAnalyticsCommandCenterService`, `AllocationPanel`, `ConcentrationPanel`)**:
+  - 10 non-duplicating allocation dimensions (`by_sector`, `by_stock`, `by_industry`, `by_country`, `by_exchange`, `by_currency` Stocks + Cash, `by_broker`, `by_size_tier`, `by_safety`, `by_asset_class`) viewable as Donut, Bar, or Treemap + exact tables.
+  - Top 3 / Top 5 / Top 10 weights, Largest Single-Stock Exposure, Herfindahl-Hirschman Index (`HHI` 0–10,000), Effective Holdings ($N_{\text{eff}}$), and configurable concentration thresholds (`portfolios.concentration_thresholds` via `PATCH /portfolio/concentration-thresholds`).
 
 ---
 
 ## 2. Key Architectural Decisions
 - **Framework**: Laravel 12.74 (`^12.0`, PHP `^8.2`) + Ziggy. Planned upgrade to Laravel 13 before Feb 2027 security EOL.
 - **Shared Hosting Compatibility**: Monolithic Laravel + MySQL (`SESSION_DRIVER=database`, `CACHE_STORE=database`, `QUEUE_CONNECTION=sync`), precompiled Vite assets (`npm.cmd run build`, no SSR), no Node/Python/Docker/Redis in production.
-- **MySQL Query Compatibility**: No SQL window functions or CTEs; precomputed snapshot tables across quotes, analytics, safety, signals, holdings, and FIFO cost lots.
-- **Decimal Arithmetic**: `brick/math` (`Dec` helper) across all accounting & financial services + explicit Eloquent `decimal:N` casts for SQLite/MySQL parity.
+- **MySQL Query Compatibility**: No SQL window functions or CTEs; precomputed snapshot tables + bounded batch replay in PHP (`Dec`).
+- **Decimal Arithmetic**: `brick/math` (`Dec` helper) across all accounting & portfolio analytics services + explicit Eloquent `decimal:N` casts.
 
 ---
 
 ## 3. Database Migration Status
-All 13 migrations applied cleanly on MySQL 8.0.30 (`nadi`), including `2026_11_27_300001_create_phase4_portfolio_accounting_tables`.
-Verified MySQL demo seed counts: `9` brokers, `1` default portfolio (`admin@nadi.test`), `2` brokerage accounts, `4` active holdings, `5` open FIFO cost lots, and `9` ledger transactions alongside `35` instruments, `8` indices, `9,100` daily bars, `35` safety assessments, and `105` trading signals.
+All 14 migrations applied cleanly on MySQL 8.0.30 (`nadi`), including `2026_11_27_400001_add_concentration_thresholds_to_portfolios_table`.
 
 ---
 
 ## 4. Verification & Test Results
 - `npx.cmd tsc --noEmit`: 0 errors.
-- `npm.cmd run build`: succeeded (`vite v6.1.1`, 2,643 modules transformed).
-- `php artisan test`: **73 passed (807 assertions)** — 0 failed, 0 skipped (Duration: 104.60s).
-  - Phase 4 Unit: `PortfolioAccountingServiceTest`, `BrokerCsvImporterTest`.
-  - Phase 4 Feature: `PortfolioAndCalculatorsTest`, updated `MarketAndStockPagesTest`.
-- `php artisan migrate:fresh --seed --force` on MySQL 8.0.30: succeeded (`brokers=9`, `portfolios=1`, `accounts=2`, `holdings=4`, `lots=5`, `transactions=9`).
+- `npm.cmd run build`: succeeded (`vite v6.1.1`, 2,646 modules transformed).
+- `php artisan test`: **75 passed (836 assertions)** — 0 failed, 0 skipped (Duration: 129.40s).
+  - Phase 5 Unit: `PortfolioCommandCenterServiceTest`, `PortfolioHistoryServiceTest`.
+  - Phase 5 Feature: updated `PortfolioAndCalculatorsTest` covering Command Center props & `PATCH /portfolio/concentration-thresholds`.
+- `php artisan migrate:fresh --seed --force` on MySQL 8.0.30: succeeded cleanly across all seeders (`BrokerSeeder`, `DemoMarketIntelligenceSeeder`, `DemoPortfolioSeeder`, etc.).
+- HTTP smoke test (`/` and `/login`): HTTP `200`.
 
 ---
 
@@ -68,7 +57,7 @@ Verified MySQL demo seed counts: `9` brokers, `1` default portfolio (`admin@nadi
 
 ---
 
-## 6. Next Actionable Tasks — Phase 5 (Portfolio Command Center)
-1. Expand Portfolio Overview & Multi-Account Comparison views (cost basis vs market value comparison, realized/unrealized/dividend breakdown by broker, sector, country, exchange, and currency).
-2. Add Apache ECharts allocation visualizations (donut, stacked bar, treemap, actual vs target placeholder hook) without duplicating asset values across accounts.
-3. Implement Portfolio Concentration Analytics (Top 3 / Top 5 / Top 10 holdings, largest single-stock weight, sector/country/broker/currency concentration, HHI index, and configurable concentration warnings).
+## 6. Next Actionable Tasks — Phase 6 (Advanced Performance & Benchmark Center)
+1. Implement **Time-Weighted Return (TWR)** with subperiod chaining across external cash flows (`cash_deposit`, `cash_withdrawal`, `stock_transfer_*`).
+2. Implement **Money-Weighted Return (XIRR)** with dated cash flows, terminal portfolio valuation, and safe non-convergence / ambiguous-root handling.
+3. Implement **Portfolio Performance Attribution** (sector/country/stock contribution to return, currency translation effects, dividend & fee effects reconciling to total portfolio return) and **Benchmark Center** (`/portfolio-analytics`, comparing normalized portfolio curves vs `IHSG`, `LQ45`, `SPX`, `NDX`, `DJI`, `STI`, `CSI300`, `HSI` with excess return, rolling return, tracking error, information ratio, and price vs total-return index disclosures).

@@ -3,6 +3,9 @@ import { DataFreshness } from '@/components/nadi/data-freshness';
 import { DemoBadge } from '@/components/nadi/demo-badge';
 import { EmptyState } from '@/components/nadi/empty-state';
 import { Money } from '@/components/nadi/money';
+import { AllocationPanel, type AllocationBucket } from '@/components/nadi/portfolio/allocation-panel';
+import { ConcentrationPanel, type ConcentrationData } from '@/components/nadi/portfolio/concentration-panel';
+import { CostVsMarketChart, type PortfolioHistoryPoint } from '@/components/nadi/portfolio/cost-vs-market-chart';
 import { SafetyBadge } from '@/components/nadi/safety-badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -42,13 +45,36 @@ interface PortfolioProps {
         total_pnl: string;
         return_on_contributions_pct: string | null;
         daily_change: string;
+        daily_change_pct: string | null;
         holdings_count: number;
         accounts_count: number;
         safety_flagged_count: number;
+        risk_status: 'empty' | 'balanced' | 'concentrated' | 'attention_required';
         as_of: string | null;
+        last_synced_at: string | null;
         is_demo: boolean;
         missing_fx: string[];
     };
+    accountComparison: Array<{
+        id: number;
+        account_name: string;
+        broker_code: string;
+        broker_name: string;
+        base_currency: string;
+        holdings_count: number;
+        cash_balance_reporting: string;
+        market_value_reporting: string;
+        total_cost_reporting: string;
+        total_equity_reporting: string;
+        net_contributions_reporting: string;
+        unrealized_pnl_reporting: string;
+        unrealized_pnl_pct: string | null;
+        realized_pnl_reporting: string;
+        dividends_received_reporting: string;
+        total_pnl_reporting: string;
+        portfolio_share_pct: string;
+        is_demo: boolean;
+    }>;
     accounts: Array<{
         id: number;
         account_name: string;
@@ -77,6 +103,7 @@ interface PortfolioProps {
         close: string | null;
         market_value: string;
         market_value_reporting: string;
+        total_cost_reporting: string;
         unrealized_pnl: string;
         unrealized_pnl_pct: string | null;
         weight_pct: string;
@@ -135,12 +162,17 @@ interface PortfolioProps {
     instruments: Array<{ id: number; symbol: string; name: string; currency: string; exchange_code: string }>;
     selectedAccountId: number | null;
     currencies: string[];
+    allocations: Record<string, AllocationBucket[]>;
+    concentration: ConcentrationData;
+    concentrationThresholds: Record<string, number>;
+    historySeries: PortfolioHistoryPoint[];
 }
 
 export default function PortfolioPage({
     portfolio,
     summary,
     accounts,
+    accountComparison,
     brokers,
     consolidatedHoldings,
     accountHoldings,
@@ -149,11 +181,15 @@ export default function PortfolioPage({
     instruments,
     selectedAccountId,
     currencies,
+    allocations,
+    concentration,
+    concentrationThresholds,
+    historySeries,
 }: PortfolioProps) {
     const { t, locale } = useT();
     const { flash } = usePage<SharedData>().props;
 
-    const [tab, setTab] = useState<'holdings' | 'ledger' | 'import' | 'reconcile'>('holdings');
+    const [tab, setTab] = useState<'overview' | 'holdings' | 'allocation' | 'accounts' | 'ledger' | 'import' | 'reconcile'>('overview');
     const [accountModalOpen, setAccountModalOpen] = useState(false);
     const [txModalOpen, setTxModalOpen] = useState(false);
     const [reverseTargetId, setReverseTargetId] = useState<number | null>(null);
@@ -380,58 +416,86 @@ export default function PortfolioPage({
                     <span>{t('portfolio.no_credentials_note')}</span>
                 </div>
 
-                {/* KPI Strip */}
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
+                {/* KPI Strip (Command Center Metrics) */}
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                     <div className="bg-card border-border rounded-md border p-3">
                         <span className="text-muted-foreground block text-[11px]">{t('portfolio.kpi.total_equity')}</span>
                         <div className="num mt-1 text-base font-bold">
                             <Money value={summary.total_equity} currency={summary.reporting_currency} />
                         </div>
+                        <span className="text-muted-foreground num block text-[11px]">
+                            {summary.accounts_count} akun · {summary.holdings_count} saham
+                        </span>
                     </div>
                     <div className="bg-card border-border rounded-md border p-3">
                         <span className="text-muted-foreground block text-[11px]">{t('portfolio.kpi.market_value')}</span>
                         <div className="num mt-1 text-base font-semibold">
                             <Money value={summary.market_value} currency={summary.reporting_currency} />
                         </div>
+                        <span className="text-muted-foreground num block text-[11px]">
+                            {t('portfolio.kpi.invested_cost')}: <Money value={summary.invested_cost} currency={summary.reporting_currency} />
+                        </span>
                     </div>
                     <div className="bg-card border-border rounded-md border p-3">
                         <span className="text-muted-foreground block text-[11px]">{t('portfolio.kpi.cash_balance')}</span>
                         <div className="num mt-1 text-base font-semibold">
                             <Money value={summary.cash_balance} currency={summary.reporting_currency} />
                         </div>
+                        <span className="text-muted-foreground num block text-[11px]">
+                            {t('portfolio.kpi.net_contributions')}: <Money value={summary.net_contributions} currency={summary.reporting_currency} />
+                        </span>
                     </div>
                     <div className="bg-card border-border rounded-md border p-3">
-                        <span className="text-muted-foreground block text-[11px]">{t('portfolio.kpi.net_contributions')}</span>
-                        <div className="num mt-1 text-base font-semibold">
-                            <Money value={summary.net_contributions} currency={summary.reporting_currency} />
-                        </div>
-                    </div>
-                    <div className="bg-card border-border rounded-md border p-3">
-                        <span className="text-muted-foreground block text-[11px]">{t('portfolio.kpi.unrealized')}</span>
+                        <span className="text-muted-foreground block text-[11px]">{t('portfolio.kpi.total_pnl')}</span>
                         <div className="mt-1">
                             <ChangeBadge
-                                change={summary.unrealized_pnl}
-                                changePct={summary.unrealized_pnl_pct}
+                                change={summary.total_pnl}
+                                changePct={summary.return_on_contributions_pct}
                                 currency={summary.reporting_currency}
                                 showValue
                             />
                         </div>
-                    </div>
-                    <div className="bg-card border-border rounded-md border p-3">
-                        <span className="text-muted-foreground block text-[11px]">{t('portfolio.kpi.realized_div')}</span>
-                        <div className="num mt-1 text-xs font-semibold">
-                            <Money value={summary.realized_pnl} currency={summary.reporting_currency} />
-                            <span className="text-muted-foreground block text-[10px]">
-                                Div: <Money value={summary.dividends_received} currency={summary.reporting_currency} />
+                        <div className="text-muted-foreground mt-0.5 flex flex-wrap items-center gap-2 text-[11px]">
+                            <span>
+                                {t('portfolio.kpi.daily_change')}: <ChangeBadge change={summary.daily_change} changePct={summary.daily_change_pct} currency={summary.reporting_currency} showValue />
                             </span>
                         </div>
+                    </div>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-3 text-xs">
+                    <div className="bg-card border-border flex items-center justify-between rounded-md border px-3 py-2">
+                        <span className="text-muted-foreground">{t('portfolio.kpi.unrealized')}</span>
+                        <ChangeBadge change={summary.unrealized_pnl} changePct={summary.unrealized_pnl_pct} currency={summary.reporting_currency} showValue />
+                    </div>
+                    <div className="bg-card border-border flex items-center justify-between rounded-md border px-3 py-2">
+                        <span className="text-muted-foreground">{t('portfolio.kpi.realized_div')}</span>
+                        <span className="num font-semibold">
+                            <Money value={summary.realized_pnl} currency={summary.reporting_currency} /> · Div{' '}
+                            <Money value={summary.dividends_received} currency={summary.reporting_currency} />
+                        </span>
+                    </div>
+                    <div className="bg-card border-border flex items-center justify-between rounded-md border px-3 py-2">
+                        <span className="text-muted-foreground">{t('portfolio.kpi.risk_status')}</span>
+                        <span
+                            className={cn(
+                                'rounded px-1.5 py-0.5 text-[11px] font-semibold',
+                                summary.risk_status === 'attention_required'
+                                    ? 'bg-[var(--nadi-loss-bg)] text-[var(--nadi-loss-ink)]'
+                                    : summary.risk_status === 'concentrated'
+                                      ? 'bg-[var(--nadi-lavender)]/25 text-[var(--nadi-lavender-ink)]'
+                                      : 'bg-[var(--nadi-gain-bg)] text-[var(--nadi-gain-ink)]',
+                            )}
+                        >
+                            {t(`portfolio.risk.${summary.risk_status}`)}
+                        </span>
                     </div>
                 </div>
 
                 {/* Sub-tabs */}
                 <div className="border-border flex flex-wrap items-center justify-between gap-2 border-b pb-2">
                     <div className="flex flex-wrap gap-1">
-                        {(['holdings', 'ledger', 'import', 'reconcile'] as const).map((k) => (
+                        {(['overview', 'holdings', 'allocation', 'accounts', 'ledger', 'import', 'reconcile'] as const).map((k) => (
                             <Button
                                 key={k}
                                 type="button"
@@ -453,6 +517,95 @@ export default function PortfolioPage({
                     </Button>
                 </div>
 
+                {/* Tab 0: Command Center Overview */}
+                {tab === 'overview' && (
+                    <div className="space-y-5">
+                        <CostVsMarketChart
+                            historySeries={historySeries}
+                            holdings={consolidatedHoldings}
+                            reportingCurrency={summary.reporting_currency}
+                        />
+                        <AllocationPanel allocations={allocations} reportingCurrency={summary.reporting_currency} />
+                        <ConcentrationPanel
+                            concentration={concentration}
+                            thresholds={concentrationThresholds}
+                            reportingCurrency={summary.reporting_currency}
+                        />
+                    </div>
+                )}
+
+                {/* Tab 2: Allocation & Concentration dedicated view */}
+                {tab === 'allocation' && (
+                    <div className="space-y-5">
+                        <AllocationPanel allocations={allocations} reportingCurrency={summary.reporting_currency} />
+                        <ConcentrationPanel
+                            concentration={concentration}
+                            thresholds={concentrationThresholds}
+                            reportingCurrency={summary.reporting_currency}
+                        />
+                    </div>
+                )}
+
+                {/* Tab 3: Multi-Account Side-by-Side Comparison */}
+                {tab === 'accounts' && (
+                    <section className="bg-card border-border rounded-md border p-4 space-y-3">
+                        <h2 className="text-sm font-semibold">{t('portfolio.accounts.comparison_title')}</h2>
+                        {accountComparison.length === 0 ? (
+                            <EmptyState title={t('app.none')} />
+                        ) : (
+                            <div className="overflow-x-auto">
+                                <table className="w-full border-collapse text-xs">
+                                    <thead>
+                                        <tr className="border-border border-b text-left">
+                                            <th className="py-2 font-semibold">Akun / Broker</th>
+                                            <th className="py-2 font-semibold">CCY</th>
+                                            <th className="py-2 text-right font-semibold">Posisi</th>
+                                            <th className="py-2 text-right font-semibold">Cost Basis ({summary.reporting_currency})</th>
+                                            <th className="py-2 text-right font-semibold">Nilai Saham</th>
+                                            <th className="py-2 text-right font-semibold">Kas</th>
+                                            <th className="py-2 text-right font-semibold">Total Ekuitas</th>
+                                            <th className="py-2 text-right font-semibold">Unrealized</th>
+                                            <th className="py-2 text-right font-semibold">Total P&L</th>
+                                            <th className="py-2 text-right font-semibold">Porsi</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-border divide-y">
+                                        {accountComparison.map((ac) => (
+                                            <tr key={ac.id} className="hover:bg-muted/30">
+                                                <td className="py-2 font-medium">
+                                                    {ac.account_name}
+                                                    <span className="text-muted-foreground block text-[10px]">{ac.broker_name}</span>
+                                                </td>
+                                                <td className="py-2 font-mono">{ac.base_currency}</td>
+                                                <td className="num py-2 text-right">{ac.holdings_count}</td>
+                                                <td className="num py-2 text-right">
+                                                    <Money value={ac.total_cost_reporting} currency={summary.reporting_currency} />
+                                                </td>
+                                                <td className="num py-2 text-right">
+                                                    <Money value={ac.market_value_reporting} currency={summary.reporting_currency} />
+                                                </td>
+                                                <td className="num py-2 text-right">
+                                                    <Money value={ac.cash_balance_reporting} currency={summary.reporting_currency} />
+                                                </td>
+                                                <td className="num py-2 text-right font-semibold">
+                                                    <Money value={ac.total_equity_reporting} currency={summary.reporting_currency} />
+                                                </td>
+                                                <td className="py-2 text-right">
+                                                    <ChangeBadge change={ac.unrealized_pnl_reporting} changePct={ac.unrealized_pnl_pct} currency={summary.reporting_currency} showValue />
+                                                </td>
+                                                <td className="py-2 text-right">
+                                                    <ChangeBadge change={ac.total_pnl_reporting} currency={summary.reporting_currency} showValue />
+                                                </td>
+                                                <td className="num py-2 text-right font-semibold">{formatNumber(ac.portfolio_share_pct, locale, 2, 2)}%</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </section>
+                )}
+
                 {/* Tab 1: Holdings */}
                 {tab === 'holdings' && (
                     <div className="space-y-5">
@@ -469,6 +622,7 @@ export default function PortfolioPage({
                                                 <th className="py-2 font-semibold">Safety</th>
                                                 <th className="py-2 text-right font-semibold">Qty</th>
                                                 <th className="py-2 text-right font-semibold">Avg Cost</th>
+                                                <th className="py-2 text-right font-semibold">Cost ({summary.reporting_currency})</th>
                                                 <th className="py-2 text-right font-semibold">{t('stocks.col.price')}</th>
                                                 <th className="py-2 text-right font-semibold">Nilai ({summary.reporting_currency})</th>
                                                 <th className="py-2 text-right font-semibold">Unrealized P&L</th>
@@ -489,6 +643,9 @@ export default function PortfolioPage({
                                                     </td>
                                                     <td className="num py-2 text-right">{formatNumber(h.quantity, locale, 0, 2)}</td>
                                                     <td className="num py-2 text-right">{formatPrice(h.avg_cost_per_share, h.currency, locale)}</td>
+                                                    <td className="num py-2 text-right">
+                                                        <Money value={h.total_cost_reporting} currency={summary.reporting_currency} />
+                                                    </td>
                                                     <td className="num py-2 text-right">{formatPrice(h.close, h.currency, locale)}</td>
                                                     <td className="num py-2 text-right font-semibold">
                                                         <Money value={h.market_value_reporting} currency={summary.reporting_currency} />

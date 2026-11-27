@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Domain\MarketData\Services\CsvSanitizer;
+use App\Domain\Portfolio\Services\PortfolioAnalyticsCommandCenterService;
+use App\Domain\Portfolio\Services\PortfolioHistoryService;
 use App\Domain\Portfolio\Services\PortfolioValuationService;
 use App\Domain\PortfolioAccounting\Services\BrokerCsvImporter;
 use App\Domain\PortfolioAccounting\Services\PortfolioAccountingService;
@@ -22,8 +24,12 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class PortfolioController extends Controller
 {
-    public function index(Request $request, PortfolioValuationService $valuation): Response
-    {
+    public function index(
+        Request $request,
+        PortfolioValuationService $valuation,
+        PortfolioAnalyticsCommandCenterService $commandCenter,
+        PortfolioHistoryService $history,
+    ): Response {
         $user = $request->user();
         $portfolio = $user->ensureDefaultPortfolio();
 
@@ -46,6 +52,16 @@ class PortfolioController extends Controller
         }
 
         $data = $valuation->summarize($user, $portfolio, $accountId, $reportingCurrency, $costBasisMethod);
+        $thresholds = $portfolio->mergedConcentrationThresholds();
+        $analytics = $commandCenter->analyze($data, $thresholds);
+        $historySeries = $history->buildDailyHistory($user, $portfolio, $accountId, $reportingCurrency, $costBasisMethod);
+
+        if ($data['summary']['risk_status'] === 'balanced' && (
+            $analytics['concentration']['hhi_level'] === 'concentrated'
+            || ! empty($analytics['concentration']['warnings'])
+        )) {
+            $data['summary']['risk_status'] = 'concentrated';
+        }
 
         $txQuery = PortfolioTransaction::query()
             ->with(['instrument.exchange:id,code', 'account:id,account_name'])
@@ -122,7 +138,31 @@ class PortfolioController extends Controller
             'instruments' => $instruments,
             'selectedAccountId' => $accountId,
             'currencies' => config('nadi.currencies', ['IDR', 'USD', 'SGD', 'CNY', 'HKD']),
+            'allocations' => $analytics['allocations'],
+            'concentration' => $analytics['concentration'],
+            'concentrationThresholds' => $thresholds,
+            'historySeries' => $historySeries,
         ]));
+    }
+
+    public function updateConcentrationThresholds(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'max_single_stock_pct' => ['required', 'numeric', 'min:5', 'max:100'],
+            'max_top3_pct' => ['required', 'numeric', 'min:10', 'max:100'],
+            'max_sector_pct' => ['required', 'numeric', 'min:10', 'max:100'],
+            'max_country_pct' => ['required', 'numeric', 'min:10', 'max:100'],
+            'max_broker_pct' => ['required', 'numeric', 'min:10', 'max:100'],
+            'max_currency_pct' => ['required', 'numeric', 'min:10', 'max:100'],
+            'hhi_elevated_threshold' => ['required', 'numeric', 'min:500', 'max:10000'],
+        ]);
+
+        $portfolio = $request->user()->ensureDefaultPortfolio();
+        $portfolio->update([
+            'concentration_thresholds' => array_map('floatval', $validated),
+        ]);
+
+        return back()->with('status', 'concentration-thresholds-updated');
     }
 
     public function storeAccount(Request $request): RedirectResponse
