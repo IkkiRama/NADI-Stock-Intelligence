@@ -57,7 +57,7 @@ export const nadiNavigationGroups: NadiNavGroup[] = [
             { key: 'nav.opportunities', href: '/opportunities', icon: Sparkles, status: 'available', phase: 3 },
             { key: 'nav.stock_safety', href: '/stock-safety', icon: ShieldAlert, status: 'available', phase: 3 },
             { key: 'nav.entry_exit', href: '/entry-exit', icon: Target, status: 'available', phase: 3 },
-            { key: 'nav.strategy_lab', href: '/segera/strategy-lab', icon: FlaskConical, status: 'planned', phase: 12 },
+            { key: 'nav.strategy_lab', href: '/strategy-lab', icon: FlaskConical, status: 'available', phase: 11 },
         ],
     },
     {

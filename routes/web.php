@@ -28,6 +28,7 @@ use App\Http\Controllers\ScreenerController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\StockController;
 use App\Http\Controllers\StockSafetyController;
+use App\Http\Controllers\StrategyLabController;
 use App\Http\Controllers\WatchlistController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -86,6 +87,11 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('broker-intelligence', [BrokerIntelligenceController::class, 'index'])->name('broker-intelligence.index');
     Route::get('broker-intelligence/export-csv', [BrokerIntelligenceController::class, 'exportCsv'])->name('broker-intelligence.export-csv');
+
+    Route::get('strategy-lab', [StrategyLabController::class, 'index'])->name('strategy-lab.index');
+    Route::post('strategy-lab/runs', [StrategyLabController::class, 'storeRun'])->name('strategy-lab.runs.store');
+    Route::delete('strategy-lab/runs/{strategyBacktestRun}', [StrategyLabController::class, 'destroyRun'])->name('strategy-lab.runs.destroy');
+    Route::get('strategy-lab/export-csv', [StrategyLabController::class, 'exportCsv'])->name('strategy-lab.export-csv');
     Route::post('portfolio/accounts', [PortfolioController::class, 'storeAccount'])->name('portfolio.accounts.store');
     Route::patch('portfolio/preferences', [PortfolioController::class, 'updatePreferences'])->name('portfolio.preferences.update');
     Route::patch('portfolio/concentration-thresholds', [PortfolioController::class, 'updateConcentrationThresholds'])->name('portfolio.thresholds.update');

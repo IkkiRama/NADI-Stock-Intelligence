@@ -66,6 +66,10 @@ class PlannedModuleController extends Controller
             return redirect()->route('broker-intelligence.index');
         }
 
+        if ($slug === 'strategy-lab') {
+            return redirect()->route('strategy-lab.index');
+        }
+
         if ($slug === 'calculators') {
             return redirect()->route('calculators.index');
         }

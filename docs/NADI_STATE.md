@@ -2,7 +2,7 @@
 
 **Last Updated**: 2026-11-27
 **Project Path**: `D:\laragon\www\nadi`
-**Current Phase**: Phase 10 Complete — Ready for **Phase 11 / 12 (Strategy Lab, Backtesting & Hardening)**
+**Current Phase**: Phase 11 Complete — Ready for **Phase 12 (Production Security Hardening, Shared-Hosting Audit & v1.0.0 Release)**
 
 ---
 
@@ -65,6 +65,11 @@
   - Enriched `brokers` directory (`16` brokers including `MIRAE`, `UBS`, `MAYBANK`, `JPMORGAN`, `CLSA`, `MACQUARIE`, `BCASEK`) with `broker_category`, IDX member codes, typical buy/sell fee schedules, CSV adapters, and `supports_live_sync = false`.
   - Computes user-isolated per-account execution counts, traded value, broker/exchange/tax fees, and effective cost in `%` and `bps` (`buildPersonalBrokerAnalytics`), paired with explicit non-fabricated Level-2 Market Depth disclosure (`marketDepthStatus.licensed = false`).
 
+### Phase 11 (Strategy Lab & Historical Backtesting Engine)
+- **Deterministic Daily-Bar Backtest Engine (`StrategyBacktestService`, `StrategyLabController`, `/strategy-lab`)**:
+  - Evaluates 4 rule templates (`sma_crossover`, `rsi_mean_reversion`, `macd_momentum`, `donchian_breakout`) across `6M`, `1Y`, and `ALL` windows with strict **zero look-ahead bias** (signals at bar $t$ close execute strictly at bar $t+1$ `open`), pessimistic intrabar Stop-Loss-before-Take-Profit tie-breaking, `TickSize::roundToTick`, whole exchange `lot_size` (`RoundingMode::DOWN`), buy/sell fees + slippage, Buy-and-Hold comparison, `< 30D` CAGR guard, `>= 20`-session Sharpe/Sortino guard, and 70%/30% In-Sample vs Out-of-Sample transparency.
+  - Supports user-isolated snapshot persistence (`StrategyBacktestRun` in `strategy_backtest_runs`), ECharts Equity vs Buy & Hold / Drawdown visualization (`StrategyEquityChart`), UTF-8 BOM formula-safe CSV exports (`/strategy-lab/export-csv`), and completes activation of all modules in `config/nadi_modules.php`.
+
 ---
 
 ## 2. Key Architectural Decisions
@@ -76,18 +81,18 @@
 ---
 
 ## 3. Database Migration Status
-All 18 migrations applied cleanly on MySQL 8.0.30 (`nadi`), including `2026_11_27_800001_create_phase10_broker_intelligence_tables`.
+All 19 migrations applied cleanly on MySQL 8.0.30 (`nadi`), including `2026_11_27_900001_create_strategy_backtest_runs_table`.
 
 ---
 
 ## 4. Verification & Test Results
 - `npx.cmd tsc --noEmit`: 0 errors.
-- `npm.cmd run build`: succeeded (`vite v6.1.1`, 2,656 modules transformed).
-- `php artisan test`: **103 passed (1,439 assertions)** — 0 failed, 0 skipped.
-  - Phase 10 Unit: `BrokerIntelligenceServiceTest` (exact CR3/foreign flow & strong accumulation classification, formula-safe CSV export, `CsvMarketImporter` `broker_summaries_daily` upsert & negative volume rejection).
-  - Phase 10 Feature: `BrokerIntelligencePageTest` (`/broker-intelligence` tabs/props, `/broker-intelligence/export-csv`, `/stocks/idx/bbca` `brokerFlow`, user isolation, admin CSV import), updated `MarketAndStockPagesTest`, `PreferencesAndLocalizationTest` (71 matching `broker_intel.*` keys in `id.json` / `en.json`).
-- `php artisan migrate:fresh --seed --force` on MySQL 8.0.30 (`nadi`): succeeded cleanly across all 18 migrations and seeders (`brokers = 16`, `broker_summaries_daily = 1,680`).
-- Synchronous Laravel HTTP Kernel verification on MySQL: `/broker-intelligence`, `/broker-intelligence?symbol=BBCA&window=20D`, `/broker-intelligence/export-csv?symbol=BBCA&window=5D` (`HTTP 200`, UTF-8 BOM, `2,099` bytes), `/stocks/idx/bbca` (`HTTP 200`), and `/admin/imports` (`HTTP 200`).
+- `npm.cmd run build`: succeeded (`vite v6.1.1`, 2,658 modules transformed).
+- `php artisan test`: **107 passed (1,555 assertions)** — 0 failed, 0 skipped.
+  - Phase 11 Unit: `StrategyBacktestServiceTest` (zero look-ahead next-bar open execution, IDX tick & whole-lot rounding, same-bar pessimistic SL-before-TP precedence, formula-safe CSV export).
+  - Phase 11 Feature: `StrategyLabPageTest` (all 4 strategy templates, CSV export, user-isolated snapshot save/delete/403), updated `MarketAndStockPagesTest`, `PreferencesAndLocalizationTest` (67 matching `strategy_lab.*` keys in `id.json` / `en.json`).
+- `php artisan migrate:fresh --seed --force` on MySQL 8.0.30 (`nadi`): succeeded cleanly across all 19 migrations and all seeders.
+- Synchronous Laravel HTTP Kernel verification on MySQL: `/strategy-lab`, `/strategy-lab?symbol=BBCA&strategy=rsi_mean_reversion&range=1Y`, `/strategy-lab?symbol=MSFT&strategy=macd_momentum&range=1Y`, and `/strategy-lab/export-csv?symbol=BBCA&strategy=sma_crossover&range=1Y` (`HTTP 200`, UTF-8 BOM, `739` bytes).
 
 ---
 
@@ -99,6 +104,6 @@ All 18 migrations applied cleanly on MySQL 8.0.30 (`nadi`), including `2026_11_2
 
 ---
 
-## 6. Next Actionable Tasks — Phase 11 / 12 (Strategy Lab, Backtesting & Final Hardening)
-1. Implement **Strategy Lab & Historical Backtesting** (`strategy-lab` module, `/strategy-lab`): deterministic daily-bar strategy simulation engine with transaction fees, exchange tick/lot rounding, realistic slippage assumptions, look-ahead bias safeguards, benchmark comparison, and walk-forward / drawdown reporting.
-2. Complete **Phase 12 Production Hardening**: CSP security headers, performance/cache sweep, deployment checklist verification for shared hosting, and full end-to-end audit.
+## 6. Next Actionable Tasks — Phase 12 (Production Security Hardening, Audit & v1.0.0 Release)
+1. Enable strict Content-Security-Policy (CSP) headers in `SecurityHeaders` middleware compatible with Vite bundles, ECharts canvas, TradingView Lightweight Charts, and Ziggy routes.
+2. Perform full shared-hosting production readiness audit (`config/nadi.php` `1.0.0`, `APP_DEBUG=false` & route/config cache verification, `DEPLOYMENT.md` final verification, end-to-end smoke check, and release tag/commit).

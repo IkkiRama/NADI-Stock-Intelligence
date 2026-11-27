@@ -244,6 +244,7 @@ final class GlobalSearchService
             ['key' => 'nav.opportunities', 'href' => '/opportunities', 'phase' => 3, 'status' => 'available'],
             ['key' => 'nav.stock_safety', 'href' => '/stock-safety', 'phase' => 3, 'status' => 'available'],
             ['key' => 'nav.entry_exit', 'href' => '/entry-exit', 'phase' => 3, 'status' => 'available'],
+            ['key' => 'nav.strategy_lab', 'href' => '/strategy-lab', 'phase' => 11, 'status' => 'available'],
             ['key' => 'nav.portfolio', 'href' => '/portfolio', 'phase' => 4, 'status' => 'available'],
             ['key' => 'nav.portfolio_analytics', 'href' => '/portfolio-analytics', 'phase' => 6, 'status' => 'available'],
             ['key' => 'nav.dividends', 'href' => '/dividends', 'phase' => 8, 'status' => 'available'],
