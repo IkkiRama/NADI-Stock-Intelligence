@@ -20,6 +20,7 @@ use App\Http\Controllers\OpportunitiesController;
 use App\Http\Controllers\PlannedModuleController;
 use App\Http\Controllers\PortfolioAnalyticsController;
 use App\Http\Controllers\PortfolioController;
+use App\Http\Controllers\ReportsController;
 use App\Http\Controllers\ResearchCenterController;
 use App\Http\Controllers\RiskRebalancingController;
 use App\Http\Controllers\ScreenerController;
@@ -76,6 +77,11 @@ Route::middleware(['auth'])->group(function () {
     Route::put('research-center/notes/{researchNote}', [ResearchCenterController::class, 'update'])->name('research.notes.update');
     Route::patch('research-center/notes/{researchNote}/pin', [ResearchCenterController::class, 'togglePin'])->name('research.notes.pin');
     Route::delete('research-center/notes/{researchNote}', [ResearchCenterController::class, 'destroy'])->name('research.notes.destroy');
+
+    Route::get('reports', [ReportsController::class, 'index'])->name('reports.index');
+    Route::get('reports/print', [ReportsController::class, 'printView'])->name('reports.print');
+    Route::get('reports/export-csv', [ReportsController::class, 'exportCsv'])->name('reports.export-csv');
+    Route::get('reports/export-json', [ReportsController::class, 'exportJson'])->name('reports.export-json');
     Route::post('portfolio/accounts', [PortfolioController::class, 'storeAccount'])->name('portfolio.accounts.store');
     Route::patch('portfolio/preferences', [PortfolioController::class, 'updatePreferences'])->name('portfolio.preferences.update');
     Route::patch('portfolio/concentration-thresholds', [PortfolioController::class, 'updateConcentrationThresholds'])->name('portfolio.thresholds.update');

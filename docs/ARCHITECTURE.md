@@ -23,6 +23,7 @@ NADI is a monolithic web application designed for conventional cPanel PHP/MySQL 
 - `app/Domain/Dividends/`: `DividendIncomeService` (realized dividend ledger analytics, projected 12M forward gross/net estimates, withholding tax rates, yield on market value vs yield on cost, and payout sustainability alerts).
 - `app/Domain/Newsroom/`: `NewsroomService` (portfolio/watchlist/global briefing feeds and ticker tagging) and `RssNewsAdapter` (offline-testable PHP `SimpleXML` RSS/Atom parser with SSRF HTTPS-only URL guard, plus `nadi:sync-news` scheduled hourly command).
 - `app/Domain/Research/`: `ResearchCenterService` (user-isolated structured investment theses, price-target upside computation, catalysts/risks/invalidation tracking, and Search integration).
+- `app/Domain/Reports/`: `PortfolioReportBuilderService` (assembles 5 institutional report types from valuation, performance, dividend, risk/rebalancing, and transaction ledger services) and `ReportCsvExporter` (UTF-8 BOM + `CsvSanitizer::escapeCell` formula-safe streaming CSV exporter), paired with shared-hosting-safe pure Blade `@media print` HTML statements (`/reports/print`) and JSON downloads (`/reports/export-json`) logged in `report_exports`.
 - `app/Domain/Notifications/`: `AlertEvaluator` (idempotent daily price, safety, and signal alerts).
 - `app/Domain/Administration/`: `AuditLogger` for immutable admin action logs.
 

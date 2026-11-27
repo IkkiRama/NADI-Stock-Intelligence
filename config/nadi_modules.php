@@ -7,12 +7,6 @@ return [
         'title_key' => 'nav.strategy_lab',
         'description_key' => 'planned.strategy_lab.desc',
     ],
-    'reports' => [
-        'slug' => 'reports',
-        'phase' => 9,
-        'title_key' => 'nav.reports',
-        'description_key' => 'planned.reports.desc',
-    ],
     'broker-intelligence' => [
         'slug' => 'broker-intelligence',
         'phase' => 10,

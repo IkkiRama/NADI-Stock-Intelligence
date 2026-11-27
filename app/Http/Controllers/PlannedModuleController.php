@@ -58,6 +58,10 @@ class PlannedModuleController extends Controller
             return redirect()->route('research.index');
         }
 
+        if ($slug === 'reports') {
+            return redirect()->route('reports.index');
+        }
+
         if ($slug === 'calculators') {
             return redirect()->route('calculators.index');
         }

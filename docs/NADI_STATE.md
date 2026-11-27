@@ -2,7 +2,7 @@
 
 **Last Updated**: 2026-11-27
 **Project Path**: `D:\laragon\www\nadi`
-**Current Phase**: Phase 8 Complete — Ready for **Phase 9 (Institutional Reports & Export Center)**
+**Current Phase**: Phase 9 Complete — Ready for **Phase 10 (Broker Intelligence & Transaction Analytics)**
 
 ---
 
@@ -50,6 +50,13 @@
 - **Investment Research Center (`ResearchCenterService`, `ResearchCenterController`, `/research-center`)**:
   - User-isolated structured investment notes (`ResearchNote`) with 5 starter templates, stance/conviction tracking, currency-guarded implied target upside, catalysts/risks/invalidation rules, pinning, and `GlobalSearchService` (`CommandPalette`) integration.
 
+### Phase 9 (Institutional Reports & Export Center)
+- **Institutional Report Assembly (`PortfolioReportBuilderService`, `/reports`)**:
+  - Composes 5 report packages directly from existing verified domain services (`executive_statement`, `performance_brief`, `dividend_tax_schedule`, `risk_rebalancing_plan`, `tax_realized_ledger`) without duplicating financial formulas, plus `buildLedgerRegister()` for transaction summaries and currency-aligned reporting filters.
+- **Shared-Hosting Safe Exports (`ReportsController`, `ReportCsvExporter`, `ReportExport`)**:
+  - Printable standalone A4 `@media print` HTML statements (`GET /reports/print`, `resources/views/reports/print.blade.php`) with `DEMO DATA NOTICE` and methodology/disclaimer footers, UTF-8 BOM + `CsvSanitizer::escapeCell` formula-injection-safe CSV exports (`GET /reports/export-csv`), and JSON downloads (`GET /reports/export-json`), logged per user in `report_exports`.
+  - Activated `/reports` across `navigation.ts`, `GlobalSearchService`, Portfolio header quick-link, and `/segera/reports` redirect.
+
 ---
 
 ## 2. Key Architectural Decisions
@@ -61,18 +68,18 @@
 ---
 
 ## 3. Database Migration Status
-All 16 migrations applied cleanly on MySQL 8.0.30 (`nadi`), including `2026_11_27_600001_create_phase8_news_research_tables`.
+All 17 migrations applied cleanly on MySQL 8.0.30 (`nadi`), including `2026_11_27_700001_create_report_exports_table`.
 
 ---
 
 ## 4. Verification & Test Results
 - `npx.cmd tsc --noEmit`: 0 errors.
-- `npm.cmd run build`: succeeded (`vite v6.1.1`, 2,654 modules transformed).
-- `php artisan test`: **92 passed (1,201 assertions)** — 0 failed, 0 skipped.
-  - Phase 8 Unit: `DividendIncomeServiceTest`, `RssNewsAdapterTest`.
-  - Phase 8 Feature: `Phase8ModulesTest`, updated `MarketAndStockPagesTest`, `PreferencesAndLocalizationTest` (locale parity).
-- `php artisan migrate:fresh --seed --force` on MySQL 8.0.30: succeeded cleanly across all seeders including `DemoNewsAndResearchSeeder` (`div_realized_all = 1200000.0000`, `div_projected_net = 7138202.5075`, `div_paying_holdings = 4`, `news_count = 12`, `research_count = 3`).
-- Laravel HTTP Kernel smoke test (`/`, `/login`, `/dashboard`, `/dividends`, `/newsroom`, `/research-center`, `/stocks/idx/bbca`): HTTP `200`.
+- `npm.cmd run build`: succeeded (`vite v6.1.1`, 2,655 modules transformed).
+- `php artisan test`: **98 passed (1,356 assertions)** — 0 failed, 0 skipped.
+  - Phase 9 Unit: `ReportCsvExporterTest` (2 tests across all 5 report types, UTF-8 BOM, and formula-injection escaping).
+  - Phase 9 Feature: `ReportsCenterTest` (4 tests covering all 5 report types, `/reports/print`, `/reports/export-csv`, `/reports/export-json`, `report_exports` logging, and user isolation), updated `MarketAndStockPagesTest`, `PreferencesAndLocalizationTest` (28 matching `reports.*` keys in `id.json` / `en.json`).
+- `php artisan migrate:fresh --seed --force` on MySQL 8.0.30 (`nadi`): succeeded cleanly across all 17 migrations and all seeders.
+- Synchronous Laravel HTTP Kernel verification on MySQL: `/reports`, `/reports/print?type=executive_statement&currency=IDR`, `/reports/print?type=performance_brief&currency=USD&range=YTD`, `/reports/export-csv?type=executive_statement&currency=IDR` (`HTTP 200`, UTF-8 BOM, 976 bytes), and `/reports/export-json?type=dividend_tax_schedule&currency=IDR` (`HTTP 200`, valid JSON), with 4 `report_exports` rows persisted.
 
 ---
 
@@ -84,6 +91,6 @@ All 16 migrations applied cleanly on MySQL 8.0.30 (`nadi`), including `2026_11_2
 
 ---
 
-## 6. Next Actionable Tasks — Phase 9 (Institutional Reports & Export Center)
-1. Implement **Printable & Downloadable Reports Center** (`/reports`: Portfolio Valuation Statement, Performance & TWR/XIRR Summary, Performance Attribution Brief, Dividend Income & Tax Schedule, and Risk/Rebalancing Plan views).
-2. Implement **Shared-Hosting Safe Exports** (clean browser print CSS / downloadable HTML/PDF-ready statements via pure PHP/React without requiring headless Chrome or heavy binary runtimes in cPanel production, alongside clean CSV exports with formula-injection sanitization).
+## 6. Next Actionable Tasks — Phase 10 (Broker Intelligence & Transaction Analytics)
+1. Implement **Broker Intelligence & Transaction Analytics** (`broker-intelligence` module): per-broker cost breakdown (broker fee, exchange levy, stamp/tax drag), execution volume, slippage/import audit stats, and brokerage account efficiency comparison on top of canonical `portfolio_transactions` and `brokerage_accounts` data.
+2. Follow with **Strategy Lab, Backtesting & Final Polish** (Phases 11–12).
