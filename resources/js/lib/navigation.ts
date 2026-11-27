@@ -74,7 +74,7 @@ export const nadiNavigationGroups: NadiNavGroup[] = [
         groupKey: 'nav.group.research',
         items: [
             { key: 'nav.newsroom', href: '/newsroom', icon: Newspaper, status: 'available', phase: 8 },
-            { key: 'nav.broker_intelligence', href: '/segera/broker-intelligence', icon: Activity, status: 'planned', phase: 10 },
+            { key: 'nav.broker_intelligence', href: '/broker-intelligence', icon: Activity, status: 'available', phase: 10 },
             { key: 'nav.research_center', href: '/research-center', icon: BookOpen, status: 'available', phase: 8 },
         ],
     },

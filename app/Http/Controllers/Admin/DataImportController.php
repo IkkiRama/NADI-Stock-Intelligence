@@ -6,6 +6,7 @@ use App\Domain\Administration\Services\AuditLogger;
 use App\Domain\MarketData\Actions\RefreshMarketIntelligence;
 use App\Domain\MarketData\Services\CsvMarketImporter;
 use App\Http\Controllers\Controller;
+use App\Models\BrokerSummaryDaily;
 use App\Models\CorporateAction;
 use App\Models\DataImportRun;
 use App\Models\DataSource;
@@ -51,6 +52,7 @@ class DataImportController extends Controller
                 'market_holidays' => MarketHoliday::query()->count(),
                 'financial_statements' => FinancialStatement::query()->count(),
                 'corporate_actions' => CorporateAction::query()->count(),
+                'broker_summaries_daily' => BrokerSummaryDaily::query()->count(),
                 'fundamentals_latest' => InstrumentFundamentalLatest::query()->count(),
                 'technicals_latest' => InstrumentTechnicalLatest::query()->count(),
                 'scores_latest' => InstrumentScore::query()->count(),

@@ -2,7 +2,7 @@
 
 **Last Updated**: 2026-11-27
 **Project Path**: `D:\laragon\www\nadi`
-**Current Phase**: Phase 9 Complete — Ready for **Phase 10 (Broker Intelligence & Transaction Analytics)**
+**Current Phase**: Phase 10 Complete — Ready for **Phase 11 / 12 (Strategy Lab, Backtesting & Hardening)**
 
 ---
 
@@ -57,6 +57,14 @@
   - Printable standalone A4 `@media print` HTML statements (`GET /reports/print`, `resources/views/reports/print.blade.php`) with `DEMO DATA NOTICE` and methodology/disclaimer footers, UTF-8 BOM + `CsvSanitizer::escapeCell` formula-injection-safe CSV exports (`GET /reports/export-csv`), and JSON downloads (`GET /reports/export-json`), logged per user in `report_exports`.
   - Activated `/reports` across `navigation.ts`, `GlobalSearchService`, Portfolio header quick-link, and `/segera/reports` redirect.
 
+### Phase 10 (Broker Intelligence & Transaction Analytics)
+- **EOD Broker Summary & Flow Engine (`BrokerIntelligenceService`, `BrokerSummaryDaily`, `DemoBrokerSummarySeeder`, `CsvMarketImporter`, `/broker-intelligence`)**:
+  - Aggregates `broker_summaries_daily` across `1D`, `5D`, and `20D` windows with exact `Dec` math, CR3/CR5 concentration ratios, Foreign Institutional / Local Institutional / Retail net flows, Top Net Buyers & Sellers rankings, market-wide flow movers, ECharts daily flow bar chart (`BrokerFlowChart`), Stock Detail (`/stocks/{exchange}/{symbol}`) compact flow card, and UTF-8 BOM formula-safe CSV exports (`/broker-intelligence/export-csv`).
+  - Supports admin CSV ingestion for `broker_summaries_daily` (`POST /admin/imports/csv`) with integer/decimal validation and idempotent upserts.
+- **Official Broker Directory & Personal Fee Drag Analytics (`BrokerSeeder`, `BrokerIntelligenceController`)**:
+  - Enriched `brokers` directory (`16` brokers including `MIRAE`, `UBS`, `MAYBANK`, `JPMORGAN`, `CLSA`, `MACQUARIE`, `BCASEK`) with `broker_category`, IDX member codes, typical buy/sell fee schedules, CSV adapters, and `supports_live_sync = false`.
+  - Computes user-isolated per-account execution counts, traded value, broker/exchange/tax fees, and effective cost in `%` and `bps` (`buildPersonalBrokerAnalytics`), paired with explicit non-fabricated Level-2 Market Depth disclosure (`marketDepthStatus.licensed = false`).
+
 ---
 
 ## 2. Key Architectural Decisions
@@ -68,18 +76,18 @@
 ---
 
 ## 3. Database Migration Status
-All 17 migrations applied cleanly on MySQL 8.0.30 (`nadi`), including `2026_11_27_700001_create_report_exports_table`.
+All 18 migrations applied cleanly on MySQL 8.0.30 (`nadi`), including `2026_11_27_800001_create_phase10_broker_intelligence_tables`.
 
 ---
 
 ## 4. Verification & Test Results
 - `npx.cmd tsc --noEmit`: 0 errors.
-- `npm.cmd run build`: succeeded (`vite v6.1.1`, 2,655 modules transformed).
-- `php artisan test`: **98 passed (1,356 assertions)** — 0 failed, 0 skipped.
-  - Phase 9 Unit: `ReportCsvExporterTest` (2 tests across all 5 report types, UTF-8 BOM, and formula-injection escaping).
-  - Phase 9 Feature: `ReportsCenterTest` (4 tests covering all 5 report types, `/reports/print`, `/reports/export-csv`, `/reports/export-json`, `report_exports` logging, and user isolation), updated `MarketAndStockPagesTest`, `PreferencesAndLocalizationTest` (28 matching `reports.*` keys in `id.json` / `en.json`).
-- `php artisan migrate:fresh --seed --force` on MySQL 8.0.30 (`nadi`): succeeded cleanly across all 17 migrations and all seeders.
-- Synchronous Laravel HTTP Kernel verification on MySQL: `/reports`, `/reports/print?type=executive_statement&currency=IDR`, `/reports/print?type=performance_brief&currency=USD&range=YTD`, `/reports/export-csv?type=executive_statement&currency=IDR` (`HTTP 200`, UTF-8 BOM, 976 bytes), and `/reports/export-json?type=dividend_tax_schedule&currency=IDR` (`HTTP 200`, valid JSON), with 4 `report_exports` rows persisted.
+- `npm.cmd run build`: succeeded (`vite v6.1.1`, 2,656 modules transformed).
+- `php artisan test`: **103 passed (1,439 assertions)** — 0 failed, 0 skipped.
+  - Phase 10 Unit: `BrokerIntelligenceServiceTest` (exact CR3/foreign flow & strong accumulation classification, formula-safe CSV export, `CsvMarketImporter` `broker_summaries_daily` upsert & negative volume rejection).
+  - Phase 10 Feature: `BrokerIntelligencePageTest` (`/broker-intelligence` tabs/props, `/broker-intelligence/export-csv`, `/stocks/idx/bbca` `brokerFlow`, user isolation, admin CSV import), updated `MarketAndStockPagesTest`, `PreferencesAndLocalizationTest` (71 matching `broker_intel.*` keys in `id.json` / `en.json`).
+- `php artisan migrate:fresh --seed --force` on MySQL 8.0.30 (`nadi`): succeeded cleanly across all 18 migrations and seeders (`brokers = 16`, `broker_summaries_daily = 1,680`).
+- Synchronous Laravel HTTP Kernel verification on MySQL: `/broker-intelligence`, `/broker-intelligence?symbol=BBCA&window=20D`, `/broker-intelligence/export-csv?symbol=BBCA&window=5D` (`HTTP 200`, UTF-8 BOM, `2,099` bytes), `/stocks/idx/bbca` (`HTTP 200`), and `/admin/imports` (`HTTP 200`).
 
 ---
 
@@ -91,6 +99,6 @@ All 17 migrations applied cleanly on MySQL 8.0.30 (`nadi`), including `2026_11_2
 
 ---
 
-## 6. Next Actionable Tasks — Phase 10 (Broker Intelligence & Transaction Analytics)
-1. Implement **Broker Intelligence & Transaction Analytics** (`broker-intelligence` module): per-broker cost breakdown (broker fee, exchange levy, stamp/tax drag), execution volume, slippage/import audit stats, and brokerage account efficiency comparison on top of canonical `portfolio_transactions` and `brokerage_accounts` data.
-2. Follow with **Strategy Lab, Backtesting & Final Polish** (Phases 11–12).
+## 6. Next Actionable Tasks — Phase 11 / 12 (Strategy Lab, Backtesting & Final Hardening)
+1. Implement **Strategy Lab & Historical Backtesting** (`strategy-lab` module, `/strategy-lab`): deterministic daily-bar strategy simulation engine with transaction fees, exchange tick/lot rounding, realistic slippage assumptions, look-ahead bias safeguards, benchmark comparison, and walk-forward / drawdown reporting.
+2. Complete **Phase 12 Production Hardening**: CSP security headers, performance/cache sweep, deployment checklist verification for shared hosting, and full end-to-end audit.

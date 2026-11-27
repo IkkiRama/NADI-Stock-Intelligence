@@ -250,6 +250,7 @@ final class GlobalSearchService
             ['key' => 'nav.risk_rebalancing', 'href' => '/risk-rebalancing', 'phase' => 7, 'status' => 'available'],
             ['key' => 'nav.reports', 'href' => '/reports', 'phase' => 9, 'status' => 'available'],
             ['key' => 'nav.newsroom', 'href' => '/newsroom', 'phase' => 8, 'status' => 'available'],
+            ['key' => 'nav.broker_intelligence', 'href' => '/broker-intelligence', 'phase' => 10, 'status' => 'available'],
             ['key' => 'nav.research_center', 'href' => '/research-center', 'phase' => 8, 'status' => 'available'],
             ['key' => 'nav.alerts_calendar', 'href' => '/alerts-calendar', 'phase' => 3, 'status' => 'available'],
             ['key' => 'nav.calculators', 'href' => '/calculators', 'phase' => 4, 'status' => 'available'],

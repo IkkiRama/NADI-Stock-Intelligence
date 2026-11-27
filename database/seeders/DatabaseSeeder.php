@@ -22,6 +22,7 @@ class DatabaseSeeder extends Seeder
             DemoMarketIntelligenceSeeder::class,
             DemoPortfolioSeeder::class,
             DemoNewsAndResearchSeeder::class,
+            DemoBrokerSummarySeeder::class,
         ]);
     }
 }

@@ -92,7 +92,8 @@ class MarketAndStockPagesTest extends TestCase
         $this->actingAs($user)->get('/segera/newsroom')->assertRedirect('/newsroom');
         $this->actingAs($user)->get('/segera/research-center')->assertRedirect('/research-center');
         $this->actingAs($user)->get('/segera/reports')->assertRedirect('/reports');
-        $this->actingAs($user)->get('/segera/broker-intelligence')->assertOk();
+        $this->actingAs($user)->get('/segera/broker-intelligence')->assertRedirect('/broker-intelligence');
+        $this->actingAs($user)->get('/segera/strategy-lab')->assertOk();
     }
 
     public function test_watchlist_add_and_remove_are_scoped_to_authenticated_user(): void

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Domain\Analytics\Services\PriceReturnService;
 use App\Domain\Analytics\Services\TechnicalIndicatorService;
+use App\Domain\BrokerIntelligence\Services\BrokerIntelligenceService;
 use App\Domain\MarketData\Actions\RefreshMarketIntelligence;
 use App\Domain\MarketData\Services\MarketClockService;
 use App\Domain\Newsroom\Services\NewsroomService;
@@ -132,6 +133,7 @@ class StockController extends Controller
         PortfolioValuationService $valuation,
         NewsroomService $newsroom,
         ResearchCenterService $research,
+        BrokerIntelligenceService $brokerIntel,
     ): Response {
         $exchangeModel = Exchange::query()
             ->with('holidays')
@@ -451,6 +453,7 @@ class StockController extends Controller
             'holdingStatus' => $holdingStatus,
             'relatedNews' => $relatedNews,
             'researchNotes' => $researchNotes,
+            'brokerFlow' => $brokerIntel->buildCompactSummaryForStock($instrument),
             'inWatchlist' => $inWatchlist,
         ]);
     }

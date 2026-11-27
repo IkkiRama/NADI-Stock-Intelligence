@@ -14,14 +14,20 @@ class Broker extends Model
         'country_code',
         'default_currency',
         'csv_adapter',
+        'broker_category',
+        'typical_buy_fee_pct',
+        'typical_sell_fee_pct',
         'supports_live_sync',
         'website_url',
+        'notes',
         'is_active',
     ];
 
     protected function casts(): array
     {
         return [
+            'typical_buy_fee_pct' => 'decimal:6',
+            'typical_sell_fee_pct' => 'decimal:6',
             'supports_live_sync' => 'boolean',
             'is_active' => 'boolean',
         ];
@@ -30,5 +36,10 @@ class Broker extends Model
     public function brokerageAccounts(): HasMany
     {
         return $this->hasMany(BrokerageAccount::class);
+    }
+
+    public function brokerSummaries(): HasMany
+    {
+        return $this->hasMany(BrokerSummaryDaily::class);
     }
 }

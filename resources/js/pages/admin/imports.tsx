@@ -88,7 +88,7 @@ export default function AdminImports({ runs, coverage, datasets }: AdminImportsP
                         </div>
 
                         <p className="text-muted-foreground font-mono text-[11px]">
-                            prices_daily: exchange_code,symbol,trade_date,open,high,low,close,volume | market_holidays: exchange_code,date,name
+                            prices_daily: exchange_code,symbol,trade_date,open,high,low,close,volume | market_holidays: exchange_code,date,name | broker_summaries_daily: exchange_code,symbol,trade_date,broker_code,buy_volume,sell_volume,buy_value,sell_value
                         </p>
 
                         <Button type="submit" size="sm" disabled={processing || !data.file}>

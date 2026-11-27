@@ -9,6 +9,7 @@ use App\Http\Controllers\Admin\SafetyRuleController;
 use App\Http\Controllers\Admin\ScoringConfigController;
 use App\Http\Controllers\Admin\UserManagementController;
 use App\Http\Controllers\AlertsCalendarController;
+use App\Http\Controllers\BrokerIntelligenceController;
 use App\Http\Controllers\CalculatorsController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DividendsController;
@@ -82,6 +83,9 @@ Route::middleware(['auth'])->group(function () {
     Route::get('reports/print', [ReportsController::class, 'printView'])->name('reports.print');
     Route::get('reports/export-csv', [ReportsController::class, 'exportCsv'])->name('reports.export-csv');
     Route::get('reports/export-json', [ReportsController::class, 'exportJson'])->name('reports.export-json');
+
+    Route::get('broker-intelligence', [BrokerIntelligenceController::class, 'index'])->name('broker-intelligence.index');
+    Route::get('broker-intelligence/export-csv', [BrokerIntelligenceController::class, 'exportCsv'])->name('broker-intelligence.export-csv');
     Route::post('portfolio/accounts', [PortfolioController::class, 'storeAccount'])->name('portfolio.accounts.store');
     Route::patch('portfolio/preferences', [PortfolioController::class, 'updatePreferences'])->name('portfolio.preferences.update');
     Route::patch('portfolio/concentration-thresholds', [PortfolioController::class, 'updateConcentrationThresholds'])->name('portfolio.thresholds.update');

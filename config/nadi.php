@@ -1,7 +1,7 @@
 <?php
 
 return [
-    'version' => '0.9.0-phase9',
+    'version' => '0.10.0-phase10',
 
     'locales' => ['id', 'en'],
 

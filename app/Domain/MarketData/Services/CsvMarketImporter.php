@@ -3,6 +3,8 @@
 namespace App\Domain\MarketData\Services;
 
 use App\Domain\MarketData\Actions\RefreshLatestQuotes;
+use App\Models\Broker;
+use App\Models\BrokerSummaryDaily;
 use App\Models\CorporateAction;
 use App\Models\DataImportRun;
 use App\Models\DataSource;
@@ -23,6 +25,7 @@ final class CsvMarketImporter
         'market_holidays',
         'financial_statements',
         'corporate_actions',
+        'broker_summaries_daily',
     ];
 
     public function __construct(
@@ -94,6 +97,10 @@ final class CsvMarketImporter
         $instruments = Instrument::query()->with('exchange:id,code')->get()->keyBy(
             fn (Instrument $i) => strtoupper($i->exchange->code).':'.strtoupper($i->symbol)
         );
+        $brokersByMemberCode = Broker::query()
+            ->whereNotNull('exchange_member_code')
+            ->get()
+            ->keyBy(fn (Broker $b) => strtoupper((string) $b->exchange_member_code));
 
         $processed = 0;
         $inserted = 0;
@@ -127,6 +134,7 @@ final class CsvMarketImporter
                     'market_holidays' => $this->mapHolidayRow($assoc, $exchanges, $now),
                     'financial_statements' => $this->mapStatementRow($assoc, $instruments, $source, $now),
                     'corporate_actions' => $this->mapCorporateActionRow($assoc, $instruments, $source, $now),
+                    'broker_summaries_daily' => $this->mapBrokerSummaryRow($assoc, $instruments, $brokersByMemberCode, $source, $now),
                 };
 
                 $batch[] = $record;
@@ -357,6 +365,73 @@ final class CsvMarketImporter
     }
 
     /**
+     * @param  array<string, mixed>  $row
+     * @param  \Illuminate\Support\Collection<string, Instrument>  $instruments
+     * @param  \Illuminate\Support\Collection<string, Broker>  $brokersByMemberCode
+     * @return array<string, mixed>
+     */
+    private function mapBrokerSummaryRow(array $row, $instruments, $brokersByMemberCode, DataSource $source, $now): array
+    {
+        $inst = $this->resolveInstrument($row, $instruments);
+        $tradeDate = $this->parseDate($row['trade_date'] ?? null, 'trade_date');
+
+        $brokerCode = strtoupper(trim((string) ($row['broker_code'] ?? '')));
+        if ($brokerCode === '' || preg_match('/^[A-Z0-9_-]{1,16}$/', $brokerCode) !== 1) {
+            throw new InvalidArgumentException("Invalid broker_code '{$brokerCode}'.");
+        }
+
+        $buyVolRaw = trim((string) ($row['buy_volume'] ?? '0'));
+        $sellVolRaw = trim((string) ($row['sell_volume'] ?? '0'));
+        if ($buyVolRaw === '' || ! is_numeric($buyVolRaw) || (int) $buyVolRaw < 0 || $sellVolRaw === '' || ! is_numeric($sellVolRaw) || (int) $sellVolRaw < 0) {
+            throw new InvalidArgumentException('buy_volume and sell_volume must be non-negative integers.');
+        }
+
+        $buyVol = (int) $buyVolRaw;
+        $sellVol = (int) $sellVolRaw;
+        $netVol = $buyVol - $sellVol;
+
+        $buyVal = $this->parseOptionalDecimal($row['buy_value'] ?? null, 4) ?? '0.0000';
+        $sellVal = $this->parseOptionalDecimal($row['sell_value'] ?? null, 4) ?? '0.0000';
+        if (Dec::cmp($buyVal, '0') < 0 || Dec::cmp($sellVal, '0') < 0) {
+            throw new InvalidArgumentException('buy_value and sell_value cannot be negative.');
+        }
+
+        $netVal = Dec::sub($buyVal, $sellVal, 4);
+        $avgBuy = $this->parseOptionalDecimal($row['avg_buy_price'] ?? null, 6)
+            ?? ($buyVol > 0 ? Dec::div($buyVal, (string) $buyVol, 6) : null);
+        $avgSell = $this->parseOptionalDecimal($row['avg_sell_price'] ?? null, 6)
+            ?? ($sellVol > 0 ? Dec::div($sellVal, (string) $sellVol, 6) : null);
+
+        $broker = $brokersByMemberCode->get($brokerCode);
+        $validCats = ['foreign_institutional', 'local_institutional', 'local_retail', 'global_broker'];
+        $rawCat = strtolower(trim((string) ($row['broker_category'] ?? '')));
+        $category = in_array($rawCat, $validCats, true)
+            ? $rawCat
+            : ($broker?->broker_category ?: 'local_retail');
+
+        return [
+            'instrument_id' => $inst->id,
+            'broker_id' => $broker?->id,
+            'broker_code' => $brokerCode,
+            'broker_category' => $category,
+            'trade_date' => $tradeDate,
+            'buy_volume' => $buyVol,
+            'sell_volume' => $sellVol,
+            'net_volume' => $netVol,
+            'buy_value' => $buyVal,
+            'sell_value' => $sellVal,
+            'net_value' => $netVal,
+            'avg_buy_price' => $avgBuy,
+            'avg_sell_price' => $avgSell,
+            'currency' => $inst->currency ?: 'IDR',
+            'data_source_id' => $source->id,
+            'is_demo' => (bool) $source->is_demo,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ];
+    }
+
+    /**
      * @param  list<array<string, mixed>>  $batch
      */
     private function flushBatch(string $dataset, array $batch): int
@@ -388,6 +463,15 @@ final class CsvMarketImporter
                 $batch,
                 ['instrument_id', 'action_type', 'ex_date'],
                 ['record_date', 'payment_date', 'declared_currency', 'cash_amount', 'ratio_numerator', 'ratio_denominator', 'notes', 'data_source_id', 'is_demo', 'updated_at']
+            ),
+            'broker_summaries_daily' => BrokerSummaryDaily::query()->upsert(
+                $batch,
+                ['instrument_id', 'trade_date', 'broker_code'],
+                [
+                    'broker_id', 'broker_category', 'buy_volume', 'sell_volume', 'net_volume',
+                    'buy_value', 'sell_value', 'net_value', 'avg_buy_price', 'avg_sell_price',
+                    'currency', 'data_source_id', 'is_demo', 'updated_at',
+                ]
             ),
         };
 

@@ -3,7 +3,6 @@ import { DataFreshness } from '@/components/nadi/data-freshness';
 import { DemoBadge } from '@/components/nadi/demo-badge';
 import { EmptyState } from '@/components/nadi/empty-state';
 import { MarketStatusBadge } from '@/components/nadi/market-status-badge';
-import { ModuleEmptyState } from '@/components/nadi/module-empty-state';
 import { Money } from '@/components/nadi/money';
 import {
     type BenchmarkOverlayData,
@@ -222,6 +221,21 @@ interface StockShowProps {
         implied_upside_pct: string | null;
         is_demo: boolean;
     }>;
+    brokerFlow?: {
+        symbol: string;
+        window: string;
+        as_of: string;
+        trading_days_count: number;
+        currency: string;
+        is_demo: boolean;
+        regime: string;
+        cr3_buy_pct: string | null;
+        cr3_sell_pct: string | null;
+        foreign_net_value: string;
+        smart_money_net_value: string;
+        top_buyer: { broker_code: string; broker_name: string; net_value: string } | null;
+        top_seller: { broker_code: string; broker_name: string; net_value: string } | null;
+    } | null;
     inWatchlist: boolean;
 }
 
@@ -245,6 +259,7 @@ export default function StockShow({
     holdingStatus,
     relatedNews = [],
     researchNotes = [],
+    brokerFlow = null,
     inWatchlist,
 }: StockShowProps) {
     const { t, locale } = useT();
@@ -1055,7 +1070,60 @@ export default function StockShow({
                         )}
                     </section>
 
-                    <ModuleEmptyState title={t('stocks.section.broker')} description={t('planned.broker_intelligence.desc')} phase={10} slug="broker-intelligence" />
+                    <section className="bg-card border-border rounded-md border p-4 space-y-2.5">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <h2 className="text-sm font-semibold">{t('stocks.section.broker')}</h2>
+                                {brokerFlow?.is_demo && <DemoBadge />}
+                            </div>
+                            <Link
+                                href={`/broker-intelligence?symbol=${instrument.symbol}`}
+                                className="text-muted-foreground hover:text-foreground text-xs underline-offset-4 hover:underline"
+                            >
+                                {t('broker_intel.stock_card.view_full')}
+                            </Link>
+                        </div>
+                        {!brokerFlow ? (
+                            <p className="text-muted-foreground text-xs">{t('broker_intel.stock_card.empty')}</p>
+                        ) : (
+                            <div className="space-y-2 text-xs">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-muted-foreground">
+                                        {t('broker_intel.kpi.regime')} ({brokerFlow.window})
+                                    </span>
+                                    <span className="bg-muted rounded px-2 py-0.5 font-semibold">
+                                        {t(`broker_intel.regime.${brokerFlow.regime}`)}
+                                    </span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <span className="text-muted-foreground">{t('broker_intel.kpi.smart_money_net')}</span>
+                                    <span className="font-mono font-medium">
+                                        {brokerFlow.currency} {formatCompact(Number(brokerFlow.smart_money_net_value), locale)}
+                                    </span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <span className="text-muted-foreground">{t('broker_intel.kpi.cr3_concentration')}</span>
+                                    <span className="font-mono">
+                                        {formatPct(brokerFlow.cr3_buy_pct, locale)} / {formatPct(brokerFlow.cr3_sell_pct, locale)}
+                                    </span>
+                                </div>
+                                <div className="border-border grid grid-cols-2 gap-2 border-t pt-2">
+                                    <div>
+                                        <span className="text-muted-foreground block text-[11px]">{t('broker_intel.top_buyers')}</span>
+                                        <span className="font-mono font-semibold text-emerald-600 dark:text-emerald-400">
+                                            {brokerFlow.top_buyer ? `${brokerFlow.top_buyer.broker_code} (+${formatCompact(Number(brokerFlow.top_buyer.net_value), locale)})` : '—'}
+                                        </span>
+                                    </div>
+                                    <div className="text-right">
+                                        <span className="text-muted-foreground block text-[11px]">{t('broker_intel.top_sellers')}</span>
+                                        <span className="font-mono font-semibold text-rose-600 dark:text-rose-400">
+                                            {brokerFlow.top_seller ? `${brokerFlow.top_seller.broker_code} (${formatCompact(Number(brokerFlow.top_seller.net_value), locale)})` : '—'}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </section>
                 </div>
             </div>
         </AppLayout>
