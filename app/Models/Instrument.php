@@ -97,4 +97,9 @@ class Instrument extends Model
     {
         return $this->hasMany(TradingSignal::class)->orderByDesc('signal_date');
     }
+
+    public function portfolioHoldings(): HasMany
+    {
+        return $this->hasMany(PortfolioHolding::class);
+    }
 }

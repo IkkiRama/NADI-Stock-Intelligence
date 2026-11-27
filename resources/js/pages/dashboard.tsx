@@ -109,6 +109,19 @@ interface DashboardProps {
         is_demo: boolean;
     }>;
     unreadAlertCount?: number;
+    portfolioSummary?: {
+        reporting_currency: string;
+        total_equity: string;
+        market_value: string;
+        cash_balance: string;
+        net_contributions: string;
+        unrealized_pnl: string;
+        unrealized_pnl_pct: string | null;
+        realized_pnl: string;
+        holdings_count: number;
+        accounts_count: number;
+        is_demo: boolean;
+    };
     exchanges: Array<{ code: string; name: string; country_code: string }>;
     selectedExchange: string;
     dashboardLayout: DashboardWidgetConfig[];
@@ -121,6 +134,7 @@ export default function Dashboard({
     topMovers,
     sectorPerformance,
     watchlistItems,
+    portfolioSummary,
     safetyWarnings = [],
     recentSignals = [],
     upcomingEvents = [],
@@ -444,13 +458,56 @@ export default function Dashboard({
 
             case 'portfolio_summary':
                 return (
-                    <ModuleEmptyState
-                        key={id}
-                        title={t('dashboard.widget.portfolio_summary')}
-                        description={t('planned.portfolio.desc')}
-                        phase={4}
-                        slug="portfolio"
-                    />
+                    <section key={id} className="bg-card border-border rounded-md border p-[var(--nadi-card-p)]">
+                        <div className="mb-3 flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <h2 className="text-sm font-semibold">{t('dashboard.widget.portfolio_summary')}</h2>
+                                {portfolioSummary?.is_demo && <DemoBadge />}
+                            </div>
+                            <Link href="/portfolio" className="text-muted-foreground hover:text-foreground text-xs underline-offset-4 hover:underline">
+                                {t('app.view_all')}
+                            </Link>
+                        </div>
+                        {!portfolioSummary || portfolioSummary.accounts_count === 0 ? (
+                            <EmptyState
+                                title={t('heatmap.empty_portfolio')}
+                                actionLabel={t('nav.portfolio')}
+                                actionHref="/portfolio"
+                            />
+                        ) : (
+                            <div className="grid grid-cols-2 gap-3 text-xs">
+                                <div>
+                                    <span className="text-muted-foreground block text-[11px]">{t('portfolio.kpi.total_equity')}</span>
+                                    <div className="num text-base font-bold">
+                                        <Money value={portfolioSummary.total_equity} currency={portfolioSummary.reporting_currency} />
+                                    </div>
+                                </div>
+                                <div>
+                                    <span className="text-muted-foreground block text-[11px]">{t('portfolio.kpi.unrealized')}</span>
+                                    <div>
+                                        <ChangeBadge
+                                            change={portfolioSummary.unrealized_pnl}
+                                            changePct={portfolioSummary.unrealized_pnl_pct}
+                                            currency={portfolioSummary.reporting_currency}
+                                            showValue
+                                        />
+                                    </div>
+                                </div>
+                                <div>
+                                    <span className="text-muted-foreground block text-[11px]">{t('portfolio.kpi.cash_balance')}</span>
+                                    <span className="num font-medium">
+                                        <Money value={portfolioSummary.cash_balance} currency={portfolioSummary.reporting_currency} />
+                                    </span>
+                                </div>
+                                <div>
+                                    <span className="text-muted-foreground block text-[11px]">Akun / Posisi</span>
+                                    <span className="num font-medium">
+                                        {portfolioSummary.accounts_count} akun · {portfolioSummary.holdings_count} saham
+                                    </span>
+                                </div>
+                            </div>
+                        )}
+                    </section>
                 );
 
             case 'stock_safety_warnings':

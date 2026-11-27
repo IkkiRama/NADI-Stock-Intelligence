@@ -2,7 +2,7 @@
 
 **Last Updated**: 2026-11-27
 **Project Path**: `D:\laragon\www\nadi`
-**Current Phase**: Phase 3 Complete — Ready for **Phase 4 (Multi-Broker Portfolio Accounting)**
+**Current Phase**: Phase 4 Complete — Ready for **Phase 5 (Portfolio Command Center)**
 
 ---
 
@@ -13,58 +13,62 @@
 
 ### Phase 2 (Market Intelligence)
 - **FX & Importers**: `FxConversionService`, `CsvMarketImporter` + `CsvSanitizer`, `ConfigurableHttpEodProvider`, `/admin/imports`, `php artisan nadi:refresh-analytics` (`fee3db8`).
-- **Quantitative Analytics**: `FundamentalCalculator` (point-in-time, cross-currency, Financials rules), `TechnicalIndicatorService`, `StockScoringService` (`/admin/scoring`).
-- **Market Intelligence UI**: **Market Heatmap** (`/heatmap`, Apache ECharts v6), **Stock Screener** (`/screener`, presets + CSV export), upgraded **Stock Detail** (`/stocks/{exchange}/{symbol}`) and `PriceChart`.
+- **Quantitative Analytics**: `FundamentalCalculator`, `TechnicalIndicatorService`, `StockScoringService` (`/admin/scoring`).
+- **Market Intelligence UI**: **Market Heatmap** (`/heatmap`), **Stock Screener** (`/screener`), upgraded **Stock Detail** & `PriceChart`.
 
 ### Phase 3 (Stock Safety, Trading Signals, Position Sizing & Alerts)
-- **NADI Stock Safety (`StockSafetyService`)**:
-  - Evaluates statistical anomaly rules (`price_surge_5d`, `price_surge_20d`, `volume_spike`, `high_volatility`, `thin_liquidity` via IDR FX conversion, `price_gap_anomaly`, `pump_reversal_pattern`, `fundamental_divergence`), baseline volatility, and `InstrumentRegulatoryStatus` (`is_suspended`, `has_special_monitoring`, `has_exchange_warning`, low `free_float_pct`, high `top_holder_pct`).
-  - Returns `0–100` `risk_score`, category (`low`/`moderate`/`elevated`/`high`/`insufficient_data`), `safeguard_triggered`, `triggered_rules`, `data_confidence`, and `missing_factors` (honestly noting `broker_concentration` for Phase 10). Never asserts definitive price manipulation.
-- **Smart Entry & Exit (`SmartEntryExitService`)**:
-  - Generates `short_term`, `swing`, and `long_term` plans with tick-aligned (`TickSize::roundToTick`) entry zones, confirmation trigger, stop-loss, invalidation price, targets 1 & 2, 3-stage tranches, and gross/net R:R adjusted for exchange transaction fees & slippage (`config/nadi.php` `trading_costs`).
-  - Automatically suppresses actionable BUY plans (`suppressed_by_safety`) when Stock Safety safeguards trigger, and returns `no_setup` whenever trend, momentum, or `net_rr >= 1.50` fails.
-- **Position Sizing Calculator (`PositionSizingCalculator`)**:
-  - Exact `Dec` (`RoundingMode::DOWN`) lot-aware sizing (`POST /entry-exit/position-size`) factoring board lots, capital caps, brokerage fees, and slippage.
-- **UI Modules, Chart Overlays & Alerts**:
-  - Active routes & navigation for **Opportunities** (`/opportunities`, hard-excluding safeguard-flagged stocks), **Stock Safety** (`/stock-safety`), **Smart Entry & Exit** (`/entry-exit`), and **Alerts & Calendar** (`/alerts-calendar`, user-scoped `UserAlert`/`AlertEvent` CRUD + `AlertEvaluator` + corporate action/holiday calendar).
-  - Upgraded `PriceChart` (`createPriceLine` S/R/Entry/SL/TP overlays + `createSeriesMarkers` signal markers), `StockDetail` Phase 3 sections, `Screener` safety column & `exclude_flagged` filter, `Dashboard` live safety/signals/events widgets, and Admin **Safety Rules** (`/admin/safety-rules`, `can:manage-safety`).
+- `StockSafetyService` (statistical anomaly & regulatory risk 0–100 + safeguard triggers), `SmartEntryExitService` (`short_term`/`swing`/`long_term`, tick-aligned levels, safeguard suppression, non-forced stances), `PositionSizingCalculator` (lot-aware exact `Dec` sizing), `AlertEvaluator`, `/opportunities`, `/stock-safety`, `/entry-exit`, `/alerts-calendar`, `/admin/safety-rules`, and `PriceChart` level/signal overlays (`95c5bca`).
+
+### Phase 4 (Multi-Broker Portfolio Accounting & Financial Calculators)
+- **Database Schema & Seeders**: `brokers`, `portfolios`, `brokerage_accounts`, `portfolio_transactions` (immutable/reversible ledger with `reversal_of_id` & `dedupe_hash`), `portfolio_holdings`, `portfolio_cost_lots` (open FIFO tax/cost lots), and `portfolio_reconciliations`; seeded `9` brokers (`BrokerSeeder`) and cross-currency demo portfolio (`DemoPortfolioSeeder`: `Stockbit Reguler (Demo)` IDR + `Interactive Brokers (Demo)` USD).
+- **Exact Accounting Engine (`PortfolioAccountingService`)**:
+  - Cleanly separates `cash_deposit`/`cash_withdrawal` (`net_contributions`) from investment returns.
+  - Computes **Weighted Average** and **FIFO** cost basis simultaneously, satisfying the conservation invariant `realized_avg + unrealized_avg == realized_fifo + unrealized_fifo`.
+  - Handles brokerage fees, exchange fees, dividend withholding taxes, stock splits, reverse splits, bonus shares, rights issues, cross-account transfers (`stock_transfer_out` / `stock_transfer_in`), oversell guards, and immutable audit reversals (`reverseTransaction`).
+- **Valuation, CSV Import & Reconciliation**:
+  - `PortfolioValuationService` (consolidated & per-account valuation in user reporting currency `IDR`/`USD`/`SGD`/`CNY`/`HKD` + Stock Detail `holdingStatus`).
+  - `BrokerCsvImporter` (Stockbit, Ajaib, IPOT, BIONS, MOST, NADI Standard adapters, IDX lot-to-share normalization, SHA-256 duplicate prevention).
+  - `PortfolioReconciliationService` (as-of statement cash & share quantity verification).
+- **UI & Calculators**:
+  - **My Portfolio** (`/portfolio`): multi-broker KPIs, Weighted Average/FIFO switcher, Add Account modal (explicit no-credentials/OTP guarantee), Record Transaction & Reversal modals, Ledger CSV export, Broker CSV Import tab, and Reconciliation tab.
+  - **Financial Calculators** (`/calculators`): Lot/Fee/Break-Even & Realized Profit, Multi-Tranche Average Cost, Position Sizing, Dividend & Yield-on-Cost, Compound Growth (CAGR), and FX Converter.
+  - Activated **Portfolio Heatmap** (`/heatmap?scope=portfolio`), **Dashboard** live `portfolio_summary` widget, and **Stock Detail** `holdingStatus` contextual panel.
 
 ---
 
 ## 2. Key Architectural Decisions
 - **Framework**: Laravel 12.74 (`^12.0`, PHP `^8.2`) + Ziggy. Planned upgrade to Laravel 13 before Feb 2027 security EOL.
 - **Shared Hosting Compatibility**: Monolithic Laravel + MySQL (`SESSION_DRIVER=database`, `CACHE_STORE=database`, `QUEUE_CONNECTION=sync`), precompiled Vite assets (`npm.cmd run build`, no SSR), no Node/Python/Docker/Redis in production.
-- **MySQL Query Compatibility**: No SQL window functions or CTEs; precomputed snapshot tables (`*_quotes_latest`, `instrument_fundamentals_latest`, `instrument_technicals_latest`, `instrument_scores`, `stock_safety_assessments`, `trading_signals`).
-- **Decimal Arithmetic**: `brick/math` (`Dec` helper) across backend services + explicit Eloquent `decimal:N` casts for SQLite/MySQL parity.
+- **MySQL Query Compatibility**: No SQL window functions or CTEs; precomputed snapshot tables across quotes, analytics, safety, signals, holdings, and FIFO cost lots.
+- **Decimal Arithmetic**: `brick/math` (`Dec` helper) across all accounting & financial services + explicit Eloquent `decimal:N` casts for SQLite/MySQL parity.
 
 ---
 
 ## 3. Database Migration Status
-All 12 migrations applied cleanly on MySQL 8.0.30 (`nadi`), including `2026_11_27_200001_create_phase3_safety_signals_alerts_tables`.
-Verified MySQL demo seed counts: `1` safety config, `35` stock safety assessments (`1` safeguard triggered on demo `GOTO`), `105` latest trading signals across 3 horizons (`46` actionable/watchlist setups), and `2` upcoming demo corporate actions alongside 35 instruments, 8 indices, and 9,100 daily equity bars.
+All 13 migrations applied cleanly on MySQL 8.0.30 (`nadi`), including `2026_11_27_300001_create_phase4_portfolio_accounting_tables`.
+Verified MySQL demo seed counts: `9` brokers, `1` default portfolio (`admin@nadi.test`), `2` brokerage accounts, `4` active holdings, `5` open FIFO cost lots, and `9` ledger transactions alongside `35` instruments, `8` indices, `9,100` daily bars, `35` safety assessments, and `105` trading signals.
 
 ---
 
 ## 4. Verification & Test Results
 - `npx.cmd tsc --noEmit`: 0 errors.
-- `npm.cmd run build`: succeeded (`vite v6.1.1`, 2,641 modules transformed).
-- `php artisan test`: **69 passed (708 assertions)** — 0 failed, 0 skipped (Duration: 118.78s).
-  - Phase 3 Unit: `StockSafetyServiceTest`, `SmartEntryExitServiceTest`, `PositionSizingCalculatorTest`, `AlertEvaluatorTest`.
-  - Phase 3 Feature: `Phase3ModulesTest`, `AdminSafetyRulesTest`, updated `MarketAndStockPagesTest`.
-- `php artisan migrate:fresh --seed --force` on MySQL 8.0.30: succeeded (`safety_configs=1`, `safety_assessments=35`, `safeguard_count=1`, `signals=105`, `actionable_or_watch=46`).
+- `npm.cmd run build`: succeeded (`vite v6.1.1`, 2,643 modules transformed).
+- `php artisan test`: **73 passed (807 assertions)** — 0 failed, 0 skipped (Duration: 104.60s).
+  - Phase 4 Unit: `PortfolioAccountingServiceTest`, `BrokerCsvImporterTest`.
+  - Phase 4 Feature: `PortfolioAndCalculatorsTest`, updated `MarketAndStockPagesTest`.
+- `php artisan migrate:fresh --seed --force` on MySQL 8.0.30: succeeded (`brokers=9`, `portfolios=1`, `accounts=2`, `holdings=4`, `lots=5`, `transactions=9`).
 
 ---
 
 ## 5. Known Issues & Limitations
 - **Market holiday calendar**: Empty by default (`holidays_loaded = false`) until imported via `/admin/imports` (`market_holidays` CSV).
 - **Intraday VWAP**: Not derived from daily EOD bars (explicitly disclosed on `PriceChart`).
-- **Lot size verification**: SGX/HKEX board lots remain flagged `lot_size_verified = false`.
-- **Broker concentration**: Disclosed in `StockSafetyAssessment::missing_factors` until Phase 10 Broker Intelligence.
+- **Live broker sync**: `supports_live_sync = false` across all brokers; NADI uses manual entry and broker CSV statement imports rather than asking for brokerage passwords or OTPs.
 - **CSP header**: Deferred to Phase 12 hardening.
 
 ---
 
-## 6. Next Actionable Tasks — Phase 4 (Multi-Broker Portfolio Accounting & Calculators)
-1. Implement multi-broker portfolio & cash ledger schema (`brokers`, `portfolio_accounts`, `portfolios`, `portfolio_cash_transactions`, `portfolio_transactions`, `portfolio_holdings_snapshot`).
-2. Implement exact `Dec` cost-basis engines (Weighted Average & FIFO lot matching), corporate action adjustments (stock split / cash dividend cash flows), realized/unrealized P&L, and multi-currency IDR conversion.
-3. Build **My Portfolio** (`/portfolio`) and **Financial Calculators** (`/calculators`, brokerage fee, average price, break-even, currency conversion), and activate Portfolio Heatmap scope (`/heatmap?scope=portfolio`) & Stock Detail holding status card.
+## 6. Next Actionable Tasks — Phase 5 (Portfolio Command Center)
+1. Expand Portfolio Overview & Multi-Account Comparison views (cost basis vs market value comparison, realized/unrealized/dividend breakdown by broker, sector, country, exchange, and currency).
+2. Add Apache ECharts allocation visualizations (donut, stacked bar, treemap, actual vs target placeholder hook) without duplicating asset values across accounts.
+3. Implement Portfolio Concentration Analytics (Top 3 / Top 5 / Top 10 holdings, largest single-stock weight, sector/country/broker/currency concentration, HHI index, and configurable concentration warnings).

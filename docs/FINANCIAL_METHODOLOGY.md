@@ -41,3 +41,13 @@
 - Every price level (`support`, `resistance`, `entry_low`, `entry_high`, `confirmation_price`, `stop_loss`, `invalidation_price`, `target_1`, `target_2`) is rounded to valid exchange price fractions via `TickSize::roundToTick`.
 - **No Forced BUY & Safeguard Suppression**: Emits `suppressed_by_safety` whenever `safeguard_triggered = true`, and emits `no_setup` whenever trend/RSI criteria or post-cost `net_rr >= 1.50` fail.
 - **Lot-Aware Position Sizing**: Uses exact `Dec` (`RoundingMode::DOWN`) after brokerage buy/sell fees and slippage assumptions (`config/nadi.php` `trading_costs`), rounding down to whole exchange lot multiples and capping by available allocated capital.
+
+## Multi-Broker Portfolio Accounting (`PortfolioAccountingService`, `PortfolioValuationService`)
+- **Cash vs Returns Separation**: `cash_deposit` and `cash_withdrawal` update `cash_balance` and `net_contributions` without ever being counted as investment profit (`realized_pnl` or `unrealized_pnl`).
+- **Buy Acquisition Cost**: `acq_cost = (quantity * price) + broker_fee + exchange_fee + tax_amount`. Increases weighted-average cost pool and opens a dated FIFO `PortfolioCostLot`.
+- **Sell Cost Relief (Dual Method)**:
+  - **Weighted Average**: Relieves `total_cost_avg * (sell_qty / held_qty)` (or exact full remaining pool on complete exit); `realized_pnl_avg += net_proceeds - cost_relieved`.
+  - **FIFO**: Consumes oldest open cost lots chronologically; `realized_pnl_fifo += net_proceeds - sum(lot_cost_relieved)`.
+  - Both methods satisfy the conservation invariant `realized_avg + unrealized_avg == realized_fifo + unrealized_fifo` at any valuation price.
+- **Corporate Actions & Transfers**: `stock_split` / `reverse_split` (`ratio_numerator : ratio_denominator`) and `bonus_shares` adjust share counts and per-share unit costs while preserving total cost basis; `stock_transfer_out` / `stock_transfer_in` carry cost basis across brokerage accounts without triggering artificial realized gains.
+- **Immutable Audit Trail**: Historical ledger rows are never silently deleted; corrections occur via `reverseTransaction`, creating an explicit `'reversal'` record referencing `reversal_of_id` and replaying the account ledger atomically.

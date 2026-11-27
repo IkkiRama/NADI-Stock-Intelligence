@@ -9,12 +9,14 @@ use App\Http\Controllers\Admin\SafetyRuleController;
 use App\Http\Controllers\Admin\ScoringConfigController;
 use App\Http\Controllers\Admin\UserManagementController;
 use App\Http\Controllers\AlertsCalendarController;
+use App\Http\Controllers\CalculatorsController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EntryExitController;
 use App\Http\Controllers\HeatmapController;
 use App\Http\Controllers\MarketController;
 use App\Http\Controllers\OpportunitiesController;
 use App\Http\Controllers\PlannedModuleController;
+use App\Http\Controllers\PortfolioController;
 use App\Http\Controllers\ScreenerController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\StockController;
@@ -53,6 +55,17 @@ Route::middleware(['auth'])->group(function () {
     Route::patch('alerts/{userAlert}/toggle', [AlertsCalendarController::class, 'toggle'])->name('alerts.toggle');
     Route::delete('alerts/{userAlert}', [AlertsCalendarController::class, 'destroy'])->name('alerts.destroy');
     Route::post('alerts/events/{alertEvent}/read', [AlertsCalendarController::class, 'markEventRead'])->name('alerts.events.read');
+
+    Route::get('portfolio', [PortfolioController::class, 'index'])->name('portfolio.index');
+    Route::post('portfolio/accounts', [PortfolioController::class, 'storeAccount'])->name('portfolio.accounts.store');
+    Route::patch('portfolio/preferences', [PortfolioController::class, 'updatePreferences'])->name('portfolio.preferences.update');
+    Route::post('portfolio/transactions', [PortfolioController::class, 'storeTransaction'])->name('portfolio.transactions.store');
+    Route::post('portfolio/transactions/{portfolioTransaction}/reverse', [PortfolioController::class, 'reverseTransaction'])->name('portfolio.transactions.reverse');
+    Route::post('portfolio/import-csv', [PortfolioController::class, 'importCsv'])->name('portfolio.import-csv');
+    Route::get('portfolio/transactions/export', [PortfolioController::class, 'exportTransactions'])->name('portfolio.transactions.export');
+    Route::post('portfolio/reconcile', [PortfolioController::class, 'reconcile'])->name('portfolio.reconcile');
+
+    Route::get('calculators', [CalculatorsController::class, 'index'])->name('calculators.index');
 
     Route::get('search', SearchController::class)->middleware('throttle:60,1')->name('search');
 

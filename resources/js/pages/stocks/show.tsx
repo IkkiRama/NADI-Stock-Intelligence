@@ -189,6 +189,17 @@ interface StockShowProps {
         sell_fee_pct: string;
         slippage_pct: string;
     };
+    holdingStatus?: {
+        cost_basis_method: string;
+        currency: string;
+        quantity: string;
+        avg_cost_per_share: string;
+        total_cost: string;
+        market_value: string | null;
+        unrealized_pnl: string | null;
+        unrealized_pnl_pct: string | null;
+        accounts: Array<{ account_id: number; account_name: string; quantity: string; cost_per_share: string }>;
+    } | null;
     inWatchlist: boolean;
 }
 
@@ -209,6 +220,7 @@ export default function StockShow({
     signalsByHorizon,
     signalHistory,
     tradingCosts,
+    holdingStatus,
     inWatchlist,
 }: StockShowProps) {
     const { t, locale } = useT();
@@ -317,12 +329,43 @@ export default function StockShow({
                 </dl>
             </div>
 
-            <ModuleEmptyState
-                title={t('stocks.detail.holding_status')}
-                description={t('planned.portfolio.desc')}
-                phase={4}
-                slug="portfolio"
-            />
+            <div className="bg-card border-border rounded-md border p-4">
+                <div className="mb-3 flex items-center justify-between gap-2">
+                    <h2 className="text-xs font-semibold tracking-wider uppercase">{t('stocks.detail.holding_status')}</h2>
+                    <Link href="/portfolio" className="text-muted-foreground hover:text-foreground text-[11px] underline-offset-4 hover:underline">
+                        {t('app.view_all')}
+                    </Link>
+                </div>
+                {!holdingStatus ? (
+                    <p className="text-muted-foreground text-xs">{t('heatmap.empty_portfolio')}</p>
+                ) : (
+                    <dl className="divide-border divide-y text-xs">
+                        <div className="flex justify-between py-2">
+                            <dt className="text-muted-foreground">Jumlah Saham</dt>
+                            <dd className="num font-semibold">{formatNumber(holdingStatus.quantity, locale, 0, 2)}</dd>
+                        </div>
+                        <div className="flex justify-between py-2">
+                            <dt className="text-muted-foreground">Avg Cost ({holdingStatus.cost_basis_method})</dt>
+                            <dd className="num font-medium">{formatPrice(holdingStatus.avg_cost_per_share, holdingStatus.currency, locale)}</dd>
+                        </div>
+                        <div className="flex justify-between py-2">
+                            <dt className="text-muted-foreground">Market Value</dt>
+                            <dd className="num font-medium">{formatPrice(holdingStatus.market_value, holdingStatus.currency, locale)}</dd>
+                        </div>
+                        <div className="flex justify-between py-2">
+                            <dt className="text-muted-foreground">Unrealized P&L</dt>
+                            <dd>
+                                <ChangeBadge
+                                    change={holdingStatus.unrealized_pnl}
+                                    changePct={holdingStatus.unrealized_pnl_pct}
+                                    currency={holdingStatus.currency}
+                                    showValue
+                                />
+                            </dd>
+                        </div>
+                    </dl>
+                )}
+            </div>
         </div>
     );
 

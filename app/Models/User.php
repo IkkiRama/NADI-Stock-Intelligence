@@ -104,6 +104,30 @@ class User extends Authenticatable
         return $this->hasMany(AlertEvent::class)->orderByDesc('triggered_date')->orderByDesc('id');
     }
 
+    public function portfolios(): HasMany
+    {
+        return $this->hasMany(Portfolio::class);
+    }
+
+    public function brokerageAccounts(): HasMany
+    {
+        return $this->hasMany(BrokerageAccount::class);
+    }
+
+    public function ensureDefaultPortfolio(): Portfolio
+    {
+        $this->loadMissing('settings');
+
+        return $this->portfolios()->firstOrCreate(
+            ['is_default' => true],
+            [
+                'name' => 'Portofolio Utama',
+                'reporting_currency' => $this->settings?->default_currency ?? 'IDR',
+                'cost_basis_method' => 'weighted_average',
+            ],
+        );
+    }
+
     public function hasRole(string $slug): bool
     {
         if ($this->relationLoaded('roles')) {

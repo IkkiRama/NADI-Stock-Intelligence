@@ -34,6 +34,14 @@ class PlannedModuleController extends Controller
             return redirect()->route('alerts-calendar.index');
         }
 
+        if ($slug === 'portfolio') {
+            return redirect()->route('portfolio.index');
+        }
+
+        if ($slug === 'calculators') {
+            return redirect()->route('calculators.index');
+        }
+
         $module = config("nadi_modules.{$slug}");
         abort_if(! is_array($module), 404);
 

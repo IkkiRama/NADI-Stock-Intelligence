@@ -7,12 +7,6 @@ return [
         'title_key' => 'nav.strategy_lab',
         'description_key' => 'planned.strategy_lab.desc',
     ],
-    'portfolio' => [
-        'slug' => 'portfolio',
-        'phase' => 4,
-        'title_key' => 'nav.portfolio',
-        'description_key' => 'planned.portfolio.desc',
-    ],
     'portfolio-analytics' => [
         'slug' => 'portfolio-analytics',
         'phase' => 6,
@@ -54,11 +48,5 @@ return [
         'phase' => 8,
         'title_key' => 'nav.research_center',
         'description_key' => 'planned.research_center.desc',
-    ],
-    'calculators' => [
-        'slug' => 'calculators',
-        'phase' => 4,
-        'title_key' => 'nav.calculators',
-        'description_key' => 'planned.calculators.desc',
     ],
 ];

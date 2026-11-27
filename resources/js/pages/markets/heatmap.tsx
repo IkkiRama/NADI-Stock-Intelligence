@@ -37,6 +37,7 @@ interface HeatmapStock {
     return_1y: string | null;
     volatility_20d: string | null;
     overall_score: string | null;
+    position_value_idr: string | null;
     as_of: string | null;
     is_demo: boolean;
 }
@@ -44,12 +45,12 @@ interface HeatmapStock {
 interface HeatmapProps {
     sectors: Array<{ sector: string; children: HeatmapStock[] }>;
     exchanges: Array<{ code: string; name: string }>;
-    filters: { scope: 'market' | 'watchlist'; exchange: string };
+    filters: { scope: 'market' | 'watchlist' | 'portfolio'; exchange: string };
     asOf: string | null;
     isDemo: boolean;
 }
 
-type SizeMetric = 'market_cap_idr' | 'value_traded' | 'volume';
+type SizeMetric = 'market_cap_idr' | 'value_traded' | 'volume' | 'position_value_idr';
 type ColorMetric = 'change_pct' | 'return_1w' | 'return_1m' | 'return_3m' | 'return_1y' | 'volatility_20d' | 'overall_score';
 
 function interpolateColor(metric: ColorMetric, rawValue: number | null, isDark: boolean): string {
@@ -117,11 +118,13 @@ export default function Heatmap({ sectors, exchanges, filters, asOf, isDemo }: H
             name: sec.sector,
             children: sec.children.map((stock) => {
                 const rawSize =
-                    sizeBy === 'market_cap_idr'
-                        ? Number(stock.market_cap_idr ?? stock.market_cap ?? 1)
-                        : sizeBy === 'value_traded'
-                          ? Number(stock.value_traded ?? 1)
-                          : Number(stock.volume || 1);
+                    sizeBy === 'position_value_idr'
+                        ? Number(stock.position_value_idr ?? stock.market_cap_idr ?? 1)
+                        : sizeBy === 'market_cap_idr'
+                          ? Number(stock.market_cap_idr ?? stock.market_cap ?? 1)
+                          : sizeBy === 'value_traded'
+                            ? Number(stock.value_traded ?? 1)
+                            : Number(stock.volume || 1);
 
                 const rawColorVal = stock[colorBy] !== null ? Number(stock[colorBy]) : null;
                 const color = interpolateColor(colorBy, rawColorVal, isDark);
@@ -225,7 +228,12 @@ export default function Heatmap({ sectors, exchanges, filters, asOf, isDemo }: H
         }
     };
 
-    const setScope = (scope: 'market' | 'watchlist') => {
+    const setScope = (scope: 'market' | 'watchlist' | 'portfolio') => {
+        if (scope === 'portfolio') {
+            setSizeBy('position_value_idr');
+        } else if (sizeBy === 'position_value_idr') {
+            setSizeBy('market_cap_idr');
+        }
         router.get('/heatmap', { scope, exchange: filters.exchange }, { preserveState: true });
     };
 
@@ -264,8 +272,14 @@ export default function Heatmap({ sectors, exchanges, filters, asOf, isDemo }: H
                         >
                             {t('heatmap.scope.watchlist')}
                         </Button>
-                        <Button type="button" size="sm" variant="outline" disabled className="h-8 text-xs" title={t('app.coming_soon')}>
-                            {t('heatmap.scope.portfolio_disabled')}
+                        <Button
+                            type="button"
+                            size="sm"
+                            variant={filters.scope === 'portfolio' ? 'default' : 'outline'}
+                            className="h-8 text-xs"
+                            onClick={() => setScope('portfolio')}
+                        >
+                            {t('heatmap.scope.portfolio')}
                         </Button>
                     </div>
                 </div>
@@ -308,6 +322,9 @@ export default function Heatmap({ sectors, exchanges, filters, asOf, isDemo }: H
                                 <SelectItem value="market_cap_idr">{t('heatmap.size.market_cap')}</SelectItem>
                                 <SelectItem value="value_traded">{t('heatmap.size.value_traded')}</SelectItem>
                                 <SelectItem value="volume">{t('heatmap.size.volume')}</SelectItem>
+                                {filters.scope === 'portfolio' && (
+                                    <SelectItem value="position_value_idr">{t('heatmap.size.position_value')}</SelectItem>
+                                )}
                             </SelectContent>
                         </Select>
 
@@ -345,9 +362,15 @@ export default function Heatmap({ sectors, exchanges, filters, asOf, isDemo }: H
                 {visibleSectors.length === 0 ? (
                     <EmptyState
                         icon={Compass}
-                        title={filters.scope === 'watchlist' ? t('heatmap.empty_watchlist') : t('stocks.empty_title')}
-                        actionLabel={t('dashboard.watchlist.cta')}
-                        actionHref="/stocks"
+                        title={
+                            filters.scope === 'watchlist'
+                                ? t('heatmap.empty_watchlist')
+                                : filters.scope === 'portfolio'
+                                  ? t('heatmap.empty_portfolio')
+                                  : t('stocks.empty_title')
+                        }
+                        actionLabel={filters.scope === 'portfolio' ? t('nav.portfolio') : t('dashboard.watchlist.cta')}
+                        actionHref={filters.scope === 'portfolio' ? '/portfolio' : '/stocks'}
                     />
                 ) : (
                     <div className="bg-card border-border rounded-md border p-2">

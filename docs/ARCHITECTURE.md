@@ -16,10 +16,12 @@ NADI is a monolithic web application designed for conventional cPanel PHP/MySQL 
 - `app/Domain/Analytics/`: `PriceReturnService`, `FundamentalCalculator` (point-in-time, cross-currency, sector-aware), `TechnicalIndicatorService` (SMA, EMA, Wilder RSI, MACD, Bollinger, ATR, OBV, 20D volatility), and `StockScoringService` (0–100 configurable weights).
 - `app/Domain/StockSafety/`: `StockSafetyService` (statistical anomaly rules, liquidity check, fundamental divergence, regulatory flags, safeguard scoring).
 - `app/Domain/TradingSignals/`: `SmartEntryExitService` (horizon-specific tick-aligned setups, safeguard suppression, non-forced stances) and `PositionSizingCalculator` (exact `Dec` lot-aware sizing with fees & slippage).
+- `app/Domain/PortfolioAccounting/`: `PortfolioAccountingService` (exact `Dec` Weighted-Average & FIFO cost basis, cash ledger, corporate actions, transfers, immutable reversals), `BrokerCsvImporter` (Stockbit, Ajaib, IPOT, BIONS, MOST, NADI Standard with SHA-256 dedupe), and `PortfolioReconciliationService`.
+- `app/Domain/Portfolio/`: `PortfolioValuationService` (cross-currency IDR/multi-currency valuation & stock-level holding status).
 - `app/Domain/Notifications/`: `AlertEvaluator` (idempotent daily price, safety, and signal alerts).
 - `app/Domain/Administration/`: `AuditLogger` for immutable admin action logs.
 
 ## Timezone & Storage Conventions
 - Trading dates (`trade_date`, `ex_date`, `published_at`) are stored as SQL `DATE` representing exchange-local dates.
 - Application timestamps (`created_at`, `updated_at`, `refreshed_at`, `calculated_at`, `last_login_at`, `viewed_at`) are stored in UTC (`APP_TIMEZONE=UTC`) and formatted in the user's configured display timezone (default `Asia/Jakarta`).
-- Precomputed snapshot tables (`instrument_quotes_latest`, `index_quotes_latest`, `instrument_fundamentals_latest`, `instrument_technicals_latest`, `instrument_scores`, `stock_safety_assessments`, `trading_signals`) eliminate SQL window functions and heavy per-request computations on shared hosting.
+- Precomputed snapshot tables (`instrument_quotes_latest`, `index_quotes_latest`, `instrument_fundamentals_latest`, `instrument_technicals_latest`, `instrument_scores`, `stock_safety_assessments`, `trading_signals`, `portfolio_holdings`, `portfolio_cost_lots`) eliminate SQL window functions and heavy per-request computations on shared hosting.

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Domain\Portfolio\Services\PortfolioValuationService;
 use App\Models\Exchange;
 use App\Models\Instrument;
 use Illuminate\Http\Request;
@@ -10,10 +11,19 @@ use Inertia\Response;
 
 class HeatmapController extends Controller
 {
-    public function index(Request $request): Response
+    public function index(Request $request, PortfolioValuationService $valuation): Response
     {
-        $scope = $request->query('scope', 'market') === 'watchlist' ? 'watchlist' : 'market';
+        $requestedScope = (string) $request->query('scope', 'market');
+        $scope = in_array($requestedScope, ['market', 'watchlist', 'portfolio'], true) ? $requestedScope : 'market';
         $exchangeFilter = strtoupper(trim((string) $request->query('exchange', 'ALL')));
+
+        $portfolioValuesByInst = [];
+        if ($scope === 'portfolio') {
+            $summary = $valuation->summarize($request->user(), null, null, 'IDR');
+            foreach ($summary['consolidatedHoldings'] as $h) {
+                $portfolioValuesByInst[$h['instrument_id']] = $h['market_value_reporting'];
+            }
+        }
 
         $query = Instrument::query()
             ->join('exchanges', 'exchanges.id', '=', 'instruments.exchange_id')
@@ -54,6 +64,9 @@ class HeatmapController extends Controller
             $watchlist = $request->user()->watchlists()->where('is_default', true)->first();
             $ids = $watchlist ? $watchlist->items()->pluck('instrument_id')->all() : [];
             $query->whereIn('instruments.id', empty($ids) ? [-1] : $ids);
+        } elseif ($scope === 'portfolio') {
+            $ids = array_keys($portfolioValuesByInst);
+            $query->whereIn('instruments.id', empty($ids) ? [-1] : $ids);
         }
 
         $rows = $query->orderBy('instruments.sector')->orderBy('instruments.symbol')->get();
@@ -90,6 +103,7 @@ class HeatmapController extends Controller
                 'return_1y' => $row->return_1y !== null ? (string) $row->return_1y : null,
                 'volatility_20d' => $row->volatility_20d !== null ? (string) $row->volatility_20d : null,
                 'overall_score' => $row->overall_score !== null ? (string) $row->overall_score : null,
+                'position_value_idr' => $portfolioValuesByInst[(int) $row->id] ?? null,
                 'as_of' => $asOf,
                 'is_demo' => (bool) $row->is_demo,
             ];

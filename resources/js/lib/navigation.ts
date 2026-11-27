@@ -63,7 +63,7 @@ export const nadiNavigationGroups: NadiNavGroup[] = [
     {
         groupKey: 'nav.group.portfolio',
         items: [
-            { key: 'nav.portfolio', href: '/segera/portfolio', icon: Briefcase, status: 'planned', phase: 4 },
+            { key: 'nav.portfolio', href: '/portfolio', icon: Briefcase, status: 'available', phase: 4 },
             { key: 'nav.portfolio_analytics', href: '/segera/portfolio-analytics', icon: BarChart3, status: 'planned', phase: 6 },
             { key: 'nav.dividends', href: '/segera/dividends', icon: TrendingUp, status: 'planned', phase: 8 },
             { key: 'nav.risk_rebalancing', href: '/segera/risk-rebalancing', icon: Scale, status: 'planned', phase: 7 },
@@ -82,7 +82,7 @@ export const nadiNavigationGroups: NadiNavGroup[] = [
         groupKey: 'nav.group.tools',
         items: [
             { key: 'nav.alerts_calendar', href: '/alerts-calendar', icon: Bell, status: 'available', phase: 3 },
-            { key: 'nav.calculators', href: '/segera/calculators', icon: Calculator, status: 'planned', phase: 4 },
+            { key: 'nav.calculators', href: '/calculators', icon: Calculator, status: 'available', phase: 4 },
         ],
     },
 ];

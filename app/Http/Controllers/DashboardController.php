@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Domain\MarketData\Services\MarketOverviewService;
+use App\Domain\Portfolio\Services\PortfolioValuationService;
 use App\Models\AlertEvent;
 use App\Models\CorporateAction;
 use App\Models\Exchange;
@@ -16,7 +17,7 @@ use Inertia\Response;
 
 class DashboardController extends Controller
 {
-    public function index(Request $request, MarketOverviewService $overview): Response
+    public function index(Request $request, MarketOverviewService $overview, PortfolioValuationService $valuation): Response
     {
         $user = $request->user();
         $user->loadMissing('settings');
@@ -130,6 +131,8 @@ class DashboardController extends Controller
             ->whereNull('read_at')
             ->count();
 
+        $portfolioSummary = $valuation->summarize($user)['summary'];
+
         return Inertia::render('dashboard', [
             'indexCards' => $overview->indexCards(),
             'clocks' => $overview->clocks(),
@@ -137,6 +140,7 @@ class DashboardController extends Controller
             'topMovers' => $overview->topMovers($selectedExchange, 5),
             'sectorPerformance' => $overview->sectorPerformance($selectedExchange),
             'watchlistItems' => $watchlistItems,
+            'portfolioSummary' => $portfolioSummary,
             'safetyWarnings' => $safetyWarnings,
             'recentSignals' => $recentSignals,
             'upcomingEvents' => $upcomingEvents,

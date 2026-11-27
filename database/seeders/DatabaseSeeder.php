@@ -16,9 +16,11 @@ class DatabaseSeeder extends Seeder
             FeatureFlagSeeder::class,
             ScoringConfigSeeder::class,
             SafetyConfigSeeder::class,
+            BrokerSeeder::class,
             AdminUserSeeder::class,
             DemoPriceSeeder::class,
             DemoMarketIntelligenceSeeder::class,
+            DemoPortfolioSeeder::class,
         ]);
     }
 }
