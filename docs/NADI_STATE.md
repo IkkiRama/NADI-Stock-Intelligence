@@ -2,7 +2,7 @@
 
 **Last Updated**: 2026-11-27
 **Project Path**: `D:\laragon\www\nadi`
-**Current Phase**: Phase 6 Complete — Ready for **Phase 7 (Risk, Drawdown & Rebalancing Studio)**
+**Current Phase**: Phase 7 Complete — Ready for **Phase 8 (Dividends, Newsroom & Research Center)**
 
 ---
 
@@ -34,6 +34,14 @@
   - Reconciled attribution by Stock (Top Contributors & Detractors), Sector, Country, Brokerage Account, and Return Driver (`local_price_effect_rep`, `fx_effect_rep`, `dividend_rep`, `fee_tax_rep`, `cash_fx_and_adjustments_rep`).
   - Normalized (`Base 100`), Cumulative (`%`), and `20D` Rolling Excess comparisons against `IHSG`, `LQ45`, `SPX`, `NDX`, `DJI`, `STI`, `CSI300`, and `HSI` with explicit `reporting_aligned` vs `native_index` FX warning, `index_type` (`price` vs `total_return`) disclosure, and `>= 20`-session gated Tracking Error & Information Ratio.
 
+### Phase 7 (Risk, Drawdown & Rebalancing Studio)
+- **Risk, Drawdown & Benchmark Beta (`PortfolioRiskAnalyticsService`)**:
+  - Cash-flow-neutral Underwater Drawdown timeline & top 5 recovery episodes (`recovered` vs `underwater`), Annualized Volatility, Downside Deviation, Sharpe, Sortino, Calmar, Historical 95% Daily VaR & CVaR, Benchmark Beta, Correlation, $R^2$, and Upside/Downside Capture (strictly gated on `>= 20` sessions).
+- **Correlation Matrix & FX Shock Sensitivity (`HoldingCorrelationAndExposureService`)**:
+  - Pairwise Pearson daily return correlation table across top holdings (`>= 20` overlapping sessions guard) and deterministic `±5%` / `±10%` FX shock table across equity + cash currency exposures.
+- **Lot-Aware Two-Pass Rebalancing Simulator (`PortfolioRebalancingService`, `RiskRebalancingController`, `/risk-rebalancing`)**:
+  - Persistent user target weights (`portfolio_rebalance_targets` + `risk_rebalance_prefs`), presets (`equal_weight`, `current_weights`, `clear`), Pass 1 overweight SELLs + Pass 2 cash-buffer-constrained BUYs in whole exchange lots (`TickSize` rounded), exchange fee estimates, Stock Safety safeguard suppression, and pre/post HHI comparison.
+
 ---
 
 ## 2. Key Architectural Decisions
@@ -45,18 +53,18 @@
 ---
 
 ## 3. Database Migration Status
-All 14 migrations applied cleanly on MySQL 8.0.30 (`nadi`), including `2026_11_27_400001_add_concentration_thresholds_to_portfolios_table`.
+All 15 migrations applied cleanly on MySQL 8.0.30 (`nadi`), including `2026_11_27_500001_create_phase7_rebalancing_targets_table`.
 
 ---
 
 ## 4. Verification & Test Results
 - `npx.cmd tsc --noEmit`: 0 errors.
-- `npm.cmd run build`: succeeded (`vite v6.1.1`, 2,648 modules transformed).
-- `php artisan test`: **82 passed (971 assertions)** — 0 failed, 0 skipped (Duration: 132.02s).
-  - Phase 6 Unit: `TwrAndXirrCalculatorTest`, `PerformanceAttributionAndBenchmarkTest`.
-  - Phase 6 Feature: `PortfolioAnalyticsPageTest`, updated `MarketAndStockPagesTest`, `PreferencesAndLocalizationTest` (locale parity).
-- `php artisan migrate:fresh --seed --force` on MySQL 8.0.30: succeeded cleanly across all seeders (`days = 44`, `twr_total = 0.02951214`, `xirr_status = converged`, `xirr_ann = 0.19713680`, `attr_gain = 11443321.5000`, `te = 0.26382464`, `ir = 1.6563`).
-- HTTP smoke test (`/` and `/login`): HTTP `200`.
+- `npm.cmd run build`: succeeded (`vite v6.1.1`, 2,650 modules transformed).
+- `php artisan test`: **87 passed (1,080 assertions)** — 0 failed, 0 skipped (Duration: 106.54s).
+  - Phase 7 Unit: `PortfolioRiskAnalyticsServiceTest`, `PortfolioRebalancingServiceTest`.
+  - Phase 7 Feature: `RiskRebalancingPageTest`, updated `MarketAndStockPagesTest`, `PreferencesAndLocalizationTest` (locale parity).
+- `php artisan migrate:fresh --seed --force` on MySQL 8.0.30: succeeded cleanly across all seeders (`max_dd = -0.05012837`, `vol = 0.18565552`, `sharpe = 0.6929`, `sortino = 1.6898`, `beta = -0.4101`, `corr_rows = 4`, `fx_buckets = 2`, `reb_rows = 4`, `pre_hhi = 4409.67`).
+- Laravel HTTP Kernel smoke test (`/`, `/login`, `/risk-rebalancing`): HTTP `200`.
 
 ---
 
@@ -68,7 +76,7 @@ All 14 migrations applied cleanly on MySQL 8.0.30 (`nadi`), including `2026_11_2
 
 ---
 
-## 6. Next Actionable Tasks — Phase 7 (Risk, Drawdown & Rebalancing Studio)
-1. Implement **Portfolio Risk & Drawdown Analytics** (historical max drawdown & recovery timeline, Value at Risk / historical volatility, beta vs benchmark, downside deviation & Sharpe/Sortino ratios with risk-free rate input).
-2. Implement **Asset Correlation & Factor / Currency Exposure Analysis** (rolling correlation heatmap across holdings and multi-currency exposure sensitivity).
-3. Implement **Target Allocation & Rebalancing Engine** (`/risk-rebalancing`: target weight models, drift detection, lot-aware suggested buy/sell rebalance orders accounting for fees, cash buffer, and tax/safety constraints).
+## 6. Next Actionable Tasks — Phase 8 (Dividends, Newsroom & Research Center)
+1. Implement **Dividends & Passive Income Tracker** (`/dividends`: projected forward 12M dividends from historical payouts/yields clearly labeled as estimates, realized dividend ledger history, payout tax withholding, monthly dividend calendar).
+2. Implement **Financial Newsroom** (`/newsroom`: curated/imported & configurable RSS/provider news adapters with ticker tagging, sentiment/impact tags without fabricating live news, and portfolio/watchlist filters).
+3. Implement **Investment Research Center** (`/research-center`: persistent personal research notes, investment thesis templates, valuation snapshots, catalysts, and linked tickers with Global Search integration).

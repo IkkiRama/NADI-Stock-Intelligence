@@ -42,6 +42,10 @@ class PlannedModuleController extends Controller
             return redirect()->route('portfolio.analytics');
         }
 
+        if ($slug === 'risk-rebalancing') {
+            return redirect()->route('portfolio.risk-rebalancing');
+        }
+
         if ($slug === 'calculators') {
             return redirect()->route('calculators.index');
         }

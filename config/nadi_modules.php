@@ -13,12 +13,6 @@ return [
         'title_key' => 'nav.dividends',
         'description_key' => 'planned.dividends.desc',
     ],
-    'risk-rebalancing' => [
-        'slug' => 'risk-rebalancing',
-        'phase' => 7,
-        'title_key' => 'nav.risk_rebalancing',
-        'description_key' => 'planned.risk_rebalancing.desc',
-    ],
     'reports' => [
         'slug' => 'reports',
         'phase' => 9,

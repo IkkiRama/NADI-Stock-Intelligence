@@ -18,6 +18,7 @@ use App\Http\Controllers\OpportunitiesController;
 use App\Http\Controllers\PlannedModuleController;
 use App\Http\Controllers\PortfolioAnalyticsController;
 use App\Http\Controllers\PortfolioController;
+use App\Http\Controllers\RiskRebalancingController;
 use App\Http\Controllers\ScreenerController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\StockController;
@@ -59,6 +60,9 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('portfolio', [PortfolioController::class, 'index'])->name('portfolio.index');
     Route::get('portfolio-analytics', [PortfolioAnalyticsController::class, 'index'])->name('portfolio.analytics');
+    Route::get('risk-rebalancing', [RiskRebalancingController::class, 'index'])->name('portfolio.risk-rebalancing');
+    Route::put('risk-rebalancing/targets', [RiskRebalancingController::class, 'updateTargets'])->name('portfolio.risk-rebalancing.targets');
+    Route::post('risk-rebalancing/presets', [RiskRebalancingController::class, 'applyPreset'])->name('portfolio.risk-rebalancing.presets');
     Route::post('portfolio/accounts', [PortfolioController::class, 'storeAccount'])->name('portfolio.accounts.store');
     Route::patch('portfolio/preferences', [PortfolioController::class, 'updatePreferences'])->name('portfolio.preferences.update');
     Route::patch('portfolio/concentration-thresholds', [PortfolioController::class, 'updateConcentrationThresholds'])->name('portfolio.thresholds.update');

@@ -21,7 +21,7 @@ import { useT } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { type BreadcrumbItem, type SharedData } from '@/types';
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { AlertTriangle, BarChart3, Briefcase, Info } from 'lucide-react';
+import { AlertTriangle, BarChart3, Briefcase, Info, Scale } from 'lucide-react';
 import { useState } from 'react';
 
 interface StockAttributionRow {
@@ -282,6 +282,13 @@ export default function PortfolioAnalyticsPage({
                             <Link href="/portfolio">
                                 <Briefcase className="h-3.5 w-3.5" />
                                 <span>{t('nav.portfolio')}</span>
+                            </Link>
+                        </Button>
+
+                        <Button asChild size="sm" variant="outline" className="h-8 gap-1 text-xs">
+                            <Link href="/risk-rebalancing">
+                                <Scale className="h-3.5 w-3.5" />
+                                <span>{t('nav.risk_rebalancing')}</span>
                             </Link>
                         </Button>
 

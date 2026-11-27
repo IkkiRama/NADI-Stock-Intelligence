@@ -18,12 +18,20 @@ class Portfolio extends Model
         'hhi_elevated_threshold' => 2500.0,
     ];
 
+    public const DEFAULT_RISK_REBALANCE_PREFS = [
+        'cash_buffer_pct' => 5.0,
+        'drift_band_pct' => 2.5,
+        'risk_free_rate_pct' => null,
+        'exclude_safety_flagged_buys' => true,
+    ];
+
     protected $fillable = [
         'user_id',
         'name',
         'reporting_currency',
         'cost_basis_method',
         'concentration_thresholds',
+        'risk_rebalance_prefs',
         'is_default',
         'notes',
     ];
@@ -32,6 +40,7 @@ class Portfolio extends Model
     {
         return [
             'concentration_thresholds' => 'array',
+            'risk_rebalance_prefs' => 'array',
             'is_default' => 'boolean',
         ];
     }
@@ -49,6 +58,35 @@ class Portfolio extends Model
         }
 
         return $merged;
+    }
+
+    /**
+     * @return array{cash_buffer_pct: float, drift_band_pct: float, risk_free_rate_pct: float|null, exclude_safety_flagged_buys: bool}
+     */
+    public function mergedRiskRebalancePrefs(): array
+    {
+        $prefs = self::DEFAULT_RISK_REBALANCE_PREFS;
+        $raw = $this->risk_rebalance_prefs ?? [];
+
+        if (isset($raw['cash_buffer_pct']) && is_numeric($raw['cash_buffer_pct'])) {
+            $prefs['cash_buffer_pct'] = (float) $raw['cash_buffer_pct'];
+        }
+        if (isset($raw['drift_band_pct']) && is_numeric($raw['drift_band_pct'])) {
+            $prefs['drift_band_pct'] = (float) $raw['drift_band_pct'];
+        }
+        if (array_key_exists('risk_free_rate_pct', $raw)) {
+            $prefs['risk_free_rate_pct'] = is_numeric($raw['risk_free_rate_pct']) ? (float) $raw['risk_free_rate_pct'] : null;
+        }
+        if (array_key_exists('exclude_safety_flagged_buys', $raw)) {
+            $prefs['exclude_safety_flagged_buys'] = (bool) $raw['exclude_safety_flagged_buys'];
+        }
+
+        return $prefs;
+    }
+
+    public function rebalanceTargets(): HasMany
+    {
+        return $this->hasMany(PortfolioRebalanceTarget::class);
     }
 
     public function user(): BelongsTo

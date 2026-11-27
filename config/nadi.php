@@ -1,7 +1,7 @@
 <?php
 
 return [
-    'version' => '0.6.0-phase6',
+    'version' => '0.7.0-phase7',
 
     'locales' => ['id', 'en'],
 
@@ -53,5 +53,15 @@ return [
         'SZSE' => ['buy_fee_pct' => '0.0015', 'sell_fee_pct' => '0.0020', 'slippage_pct' => '0.0010'],
         'HKEX' => ['buy_fee_pct' => '0.0018', 'sell_fee_pct' => '0.0018', 'slippage_pct' => '0.0010'],
         'DEFAULT' => ['buy_fee_pct' => '0.0015', 'sell_fee_pct' => '0.0015', 'slippage_pct' => '0.0010'],
+    ],
+
+    // Annual reference risk-free rates (decimal fractions); configurable by user in Risk Studio
+    'risk_free_rates' => [
+        'IDR' => '0.0600',
+        'USD' => '0.0450',
+        'SGD' => '0.0320',
+        'CNY' => '0.0200',
+        'HKD' => '0.0400',
+        'DEFAULT' => '0.0450',
     ],
 ];
