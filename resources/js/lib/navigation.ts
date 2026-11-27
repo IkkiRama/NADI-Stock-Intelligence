@@ -64,7 +64,7 @@ export const nadiNavigationGroups: NadiNavGroup[] = [
         groupKey: 'nav.group.portfolio',
         items: [
             { key: 'nav.portfolio', href: '/portfolio', icon: Briefcase, status: 'available', phase: 4 },
-            { key: 'nav.portfolio_analytics', href: '/segera/portfolio-analytics', icon: BarChart3, status: 'planned', phase: 6 },
+            { key: 'nav.portfolio_analytics', href: '/portfolio-analytics', icon: BarChart3, status: 'available', phase: 6 },
             { key: 'nav.dividends', href: '/segera/dividends', icon: TrendingUp, status: 'planned', phase: 8 },
             { key: 'nav.risk_rebalancing', href: '/segera/risk-rebalancing', icon: Scale, status: 'planned', phase: 7 },
             { key: 'nav.reports', href: '/segera/reports', icon: FileText, status: 'planned', phase: 9 },

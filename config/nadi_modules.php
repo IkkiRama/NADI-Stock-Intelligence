@@ -7,12 +7,6 @@ return [
         'title_key' => 'nav.strategy_lab',
         'description_key' => 'planned.strategy_lab.desc',
     ],
-    'portfolio-analytics' => [
-        'slug' => 'portfolio-analytics',
-        'phase' => 6,
-        'title_key' => 'nav.portfolio_analytics',
-        'description_key' => 'planned.portfolio_analytics.desc',
-    ],
     'dividends' => [
         'slug' => 'dividends',
         'phase' => 8,

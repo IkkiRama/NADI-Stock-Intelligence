@@ -19,7 +19,7 @@ import { useT } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { type BreadcrumbItem, type SharedData } from '@/types';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
-import { Briefcase, Download, Lock, Plus, RotateCcw, UploadCloud } from 'lucide-react';
+import { Briefcase, Download, LineChart, Lock, Plus, RotateCcw, UploadCloud } from 'lucide-react';
 import { useState } from 'react';
 
 interface PortfolioProps {
@@ -386,6 +386,13 @@ export default function PortfolioPage({
                                 <SelectItem value="fifo">{t('portfolio.method.fifo')}</SelectItem>
                             </SelectContent>
                         </Select>
+
+                        <Button asChild size="sm" variant="outline" className="h-8 gap-1 text-xs">
+                            <Link href="/portfolio-analytics">
+                                <LineChart className="h-3.5 w-3.5" />
+                                <span>{t('nav.portfolio_analytics')}</span>
+                            </Link>
+                        </Button>
 
                         <Button type="button" size="sm" variant="outline" className="h-8 gap-1 text-xs" onClick={() => setAccountModalOpen(true)}>
                             <Plus className="h-3.5 w-3.5" />

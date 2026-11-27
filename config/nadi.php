@@ -1,7 +1,7 @@
 <?php
 
 return [
-    'version' => '0.5.0-phase5',
+    'version' => '0.6.0-phase6',
 
     'locales' => ['id', 'en'],
 
@@ -20,6 +20,7 @@ return [
         'market' => 'IDX',
         'timeframe' => '1Y',
         'timezone' => 'Asia/Jakarta',
+        'benchmark' => 'IHSG',
     ],
 
     'market_data' => [

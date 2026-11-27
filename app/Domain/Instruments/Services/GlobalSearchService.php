@@ -237,6 +237,7 @@ final class GlobalSearchService
             ['key' => 'nav.stock_safety', 'href' => '/stock-safety', 'phase' => 3, 'status' => 'available'],
             ['key' => 'nav.entry_exit', 'href' => '/entry-exit', 'phase' => 3, 'status' => 'available'],
             ['key' => 'nav.portfolio', 'href' => '/portfolio', 'phase' => 4, 'status' => 'available'],
+            ['key' => 'nav.portfolio_analytics', 'href' => '/portfolio-analytics', 'phase' => 6, 'status' => 'available'],
             ['key' => 'nav.alerts_calendar', 'href' => '/alerts-calendar', 'phase' => 3, 'status' => 'available'],
             ['key' => 'nav.calculators', 'href' => '/calculators', 'phase' => 4, 'status' => 'available'],
             ['key' => 'nav.settings', 'href' => '/settings/preferences', 'phase' => 1, 'status' => 'available'],

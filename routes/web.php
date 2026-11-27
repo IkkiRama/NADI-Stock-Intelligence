@@ -16,6 +16,7 @@ use App\Http\Controllers\HeatmapController;
 use App\Http\Controllers\MarketController;
 use App\Http\Controllers\OpportunitiesController;
 use App\Http\Controllers\PlannedModuleController;
+use App\Http\Controllers\PortfolioAnalyticsController;
 use App\Http\Controllers\PortfolioController;
 use App\Http\Controllers\ScreenerController;
 use App\Http\Controllers\SearchController;
@@ -57,6 +58,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('alerts/events/{alertEvent}/read', [AlertsCalendarController::class, 'markEventRead'])->name('alerts.events.read');
 
     Route::get('portfolio', [PortfolioController::class, 'index'])->name('portfolio.index');
+    Route::get('portfolio-analytics', [PortfolioAnalyticsController::class, 'index'])->name('portfolio.analytics');
     Route::post('portfolio/accounts', [PortfolioController::class, 'storeAccount'])->name('portfolio.accounts.store');
     Route::patch('portfolio/preferences', [PortfolioController::class, 'updatePreferences'])->name('portfolio.preferences.update');
     Route::patch('portfolio/concentration-thresholds', [PortfolioController::class, 'updateConcentrationThresholds'])->name('portfolio.thresholds.update');
