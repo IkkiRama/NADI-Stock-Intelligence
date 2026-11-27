@@ -115,7 +115,7 @@
 
 <div class="no-print">
     <a href="/reports?type={{ urlencode($type) }}" class="btn">← Back to NADI Reports</a>
-    <button type="button" class="btn btn-primary" onclick="window.print()">Print / Save PDF</button>
+    <button type="button" id="nadi-print-btn" class="btn btn-primary">Print / Save PDF</button>
 </div>
 
 <div class="sheet">
@@ -341,5 +341,10 @@
         @endforeach
     </div>
 </div>
+<script nonce="{{ \Illuminate\Support\Facades\Vite::cspNonce() }}">
+    document.getElementById('nadi-print-btn')?.addEventListener('click', function () {
+        window.print();
+    });
+</script>
 </body>
 </html>

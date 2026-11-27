@@ -11,7 +11,7 @@
         <link rel="icon" type="image/svg+xml" href="/icons/nadi-icon.svg">
         <link rel="manifest" href="/manifest.webmanifest">
 
-        @routes
+        @routes(null, \Illuminate\Support\Facades\Vite::cspNonce())
         @viteReactRefresh
         @vite(['resources/js/app.tsx', "resources/js/pages/{$page['component']}.tsx"])
         @inertiaHead

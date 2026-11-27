@@ -27,7 +27,7 @@ NADI is a monolithic web application designed for conventional cPanel PHP/MySQL 
 - `app/Domain/BrokerIntelligence/`: `BrokerIntelligenceService` (EOD broker summary accumulation/distribution analysis, CR3/CR5 concentration & foreign/institutional/retail flow decomposition, official broker directory metadata, user-isolated personal brokerage fee drag in `%` and `bps`, licensed Level-2 market depth honesty disclosure, and sanitized flow CSV export), paired with `CsvMarketImporter` support for `broker_summaries_daily`.
 - `app/Domain/StrategyLab/`: `StrategyBacktestService` (deterministic daily-bar rule backtester across SMA Crossover, RSI Mean Reversion, MACD Histogram Momentum, and Donchian Breakout with strict `t+1` next-bar open execution, pessimistic same-bar SL-before-TP tie-break, `TickSize` rounding, `RoundingMode::DOWN` whole-lot sizing, Buy-and-Hold comparison, 70%/30% In/Out-of-Sample split, saved runs in `strategy_backtest_runs`, and UTF-8 BOM CSV export).
 - `app/Domain/Notifications/`: `AlertEvaluator` (idempotent daily price, safety, and signal alerts).
-- `app/Domain/Administration/`: `AuditLogger` for immutable admin action logs.
+- `app/Domain/Administration/`: `AuditLogger` for immutable admin action logs, alongside `SecurityHeaders` middleware (per-request Vite/Ziggy CSP nonces + HSTS) and `php artisan nadi:doctor` shared-hosting diagnostic command.
 
 ## Timezone & Storage Conventions
 - Trading dates (`trade_date`, `ex_date`, `published_at`) are stored as SQL `DATE` representing exchange-local dates.

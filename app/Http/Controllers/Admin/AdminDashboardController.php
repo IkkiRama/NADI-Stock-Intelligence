@@ -29,6 +29,18 @@ class AdminDashboardController extends Controller
             ],
             'dataSources' => DataSource::query()->orderBy('id')->get(),
             'latestRefresh' => $latestRefresh,
+            'systemHealth' => [
+                'version' => (string) config('nadi.version'),
+                'php_version' => PHP_VERSION,
+                'environment' => app()->environment(),
+                'db_driver' => (string) config('database.default'),
+                'session_driver' => (string) config('session.driver'),
+                'cache_driver' => (string) config('cache.default'),
+                'queue_driver' => (string) config('queue.default'),
+                'demo_mode' => (bool) config('nadi.market_data.demo.enabled'),
+                'csp_enabled' => true,
+                'vite_manifest_present' => is_file(public_path('build/manifest.json')),
+            ],
         ]);
     }
 }

@@ -58,7 +58,12 @@ php artisan db:seed --force
 php artisan config:cache
 php artisan route:cache
 php artisan view:cache
+php artisan nadi:doctor
 ```
+
+## 5. Security Hardening Verification (`v1.0.0`)
+- All web responses emit per-request cryptographic nonces for `@routes` and `@vite` under strict `Content-Security-Policy` (`script-src 'self' 'nonce-...'` without `'unsafe-inline'` or `'unsafe-eval'`), `frame-ancestors 'none'`, `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `X-Permitted-Cross-Domain-Policies: none`, and `Strict-Transport-Security` on HTTPS.
+- `public/.htaccess` blocks hidden dotfiles (`.env`, `.git`, etc. except `.well-known/`) and sets immutable caching for hashed `/build/assets/*` bundles.
 
 ## 5. cPanel Cron Job (Laravel Scheduler)
 Add a single cron job running every minute:

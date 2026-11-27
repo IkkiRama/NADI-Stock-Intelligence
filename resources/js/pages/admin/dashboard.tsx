@@ -24,9 +24,21 @@ interface AdminDashboardProps {
         last_failure_at: string | null;
     }>;
     latestRefresh: string | null;
+    systemHealth?: {
+        version: string;
+        php_version: string;
+        environment: string;
+        db_driver: string;
+        session_driver: string;
+        cache_driver: string;
+        queue_driver: string;
+        demo_mode: boolean;
+        csp_enabled: boolean;
+        vite_manifest_present: boolean;
+    };
 }
 
-export default function AdminDashboard({ stats, dataSources, latestRefresh }: AdminDashboardProps) {
+export default function AdminDashboard({ stats, dataSources, latestRefresh, systemHealth }: AdminDashboardProps) {
     const { t, locale } = useT();
 
     return (
@@ -76,6 +88,41 @@ export default function AdminDashboard({ stats, dataSources, latestRefresh }: Ad
                         ))}
                     </div>
                 </div>
+
+                {systemHealth && (
+                    <div className="bg-card border-border rounded-md border p-4">
+                        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                            <h2 className="text-sm font-semibold">{t('admin.health.title')}</h2>
+                            <span className="bg-muted rounded px-2 py-0.5 font-mono text-[11px] font-semibold">
+                                v{systemHealth.version} · {systemHealth.environment}
+                            </span>
+                        </div>
+                        <div className="grid gap-3 text-xs sm:grid-cols-2 lg:grid-cols-4">
+                            <div className="border-border rounded border p-2.5">
+                                <span className="text-muted-foreground block text-[11px]">{t('admin.health.runtime')}</span>
+                                <span className="font-mono font-medium">PHP {systemHealth.php_version} · {systemHealth.db_driver}</span>
+                            </div>
+                            <div className="border-border rounded border p-2.5">
+                                <span className="text-muted-foreground block text-[11px]">{t('admin.health.drivers')}</span>
+                                <span className="font-mono font-medium">
+                                    {systemHealth.session_driver} / {systemHealth.cache_driver} / {systemHealth.queue_driver}
+                                </span>
+                            </div>
+                            <div className="border-border rounded border p-2.5">
+                                <span className="text-muted-foreground block text-[11px]">{t('admin.health.csp')}</span>
+                                <span className="font-mono font-medium">
+                                    {systemHealth.csp_enabled ? t('admin.health.csp_active') : 'Off'}
+                                </span>
+                            </div>
+                            <div className="border-border rounded border p-2.5">
+                                <span className="text-muted-foreground block text-[11px]">{t('admin.health.assets')}</span>
+                                <span className="font-mono font-medium">
+                                    {systemHealth.vite_manifest_present ? t('admin.health.assets_ready') : 'Missing'}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
         </AdminLayout>
     );

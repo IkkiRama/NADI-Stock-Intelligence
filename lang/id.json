@@ -953,5 +953,12 @@
     "strategy_lab.saved.title": "Riwayat Snapshot Backtest Tersimpan",
     "strategy_lab.saved.empty": "Belum ada snapshot backtest tersimpan.",
     "strategy_lab.saved.load": "Muat",
-    "strategy_lab.disclaimer": "Penafian simulasi hipotetis: Kinerja historis tersimulasi (termasuk data Demo yang ditandai) tidak menjamin hasil eksekusi riil di masa depan dan belum mencerminkan survivorship bias maupun antrean likuiditas intraday."
+    "strategy_lab.disclaimer": "Penafian simulasi hipotetis: Kinerja historis tersimulasi (termasuk data Demo yang ditandai) tidak menjamin hasil eksekusi riil di masa depan dan belum mencerminkan survivorship bias maupun antrean likuiditas intraday.",
+    "admin.health.title": "Kesiapan Produksi & Keamanan Shared Hosting",
+    "admin.health.runtime": "PHP & Basis Data",
+    "admin.health.drivers": "Session / Cache / Queue",
+    "admin.health.csp": "Header Keamanan & CSP",
+    "admin.health.csp_active": "CSP Nonce Aktif",
+    "admin.health.assets": "Aset Vite Terkompilasi",
+    "admin.health.assets_ready": "Manifest Siap (Tanpa SSR)"
 }

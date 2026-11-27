@@ -16,9 +16,7 @@ Route::middleware('auth')->group(function () {
     Route::get('settings/password', [PasswordController::class, 'edit'])->name('password.edit');
     Route::put('settings/password', [PasswordController::class, 'update'])->name('password.update');
 
-    Route::get('settings/appearance', function () {
-        return Inertia::render('settings/appearance');
-    })->name('appearance');
+    Route::inertia('settings/appearance', 'settings/appearance')->name('appearance');
 
     Route::get('settings/preferences', [PreferencesController::class, 'edit'])->name('preferences.edit');
     Route::patch('settings/preferences', [PreferencesController::class, 'update'])->name('preferences.update');

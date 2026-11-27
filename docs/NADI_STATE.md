@@ -2,7 +2,7 @@
 
 **Last Updated**: 2026-11-27
 **Project Path**: `D:\laragon\www\nadi`
-**Current Phase**: Phase 11 Complete — Ready for **Phase 12 (Production Security Hardening, Shared-Hosting Audit & v1.0.0 Release)**
+**Current Phase**: Phase 0 – Phase 12 Complete — **NADI v1.0.0 Production Ready**
 
 ---
 
@@ -70,6 +70,12 @@
   - Evaluates 4 rule templates (`sma_crossover`, `rsi_mean_reversion`, `macd_momentum`, `donchian_breakout`) across `6M`, `1Y`, and `ALL` windows with strict **zero look-ahead bias** (signals at bar $t$ close execute strictly at bar $t+1$ `open`), pessimistic intrabar Stop-Loss-before-Take-Profit tie-breaking, `TickSize::roundToTick`, whole exchange `lot_size` (`RoundingMode::DOWN`), buy/sell fees + slippage, Buy-and-Hold comparison, `< 30D` CAGR guard, `>= 20`-session Sharpe/Sortino guard, and 70%/30% In-Sample vs Out-of-Sample transparency.
   - Supports user-isolated snapshot persistence (`StrategyBacktestRun` in `strategy_backtest_runs`), ECharts Equity vs Buy & Hold / Drawdown visualization (`StrategyEquityChart`), UTF-8 BOM formula-safe CSV exports (`/strategy-lab/export-csv`), and completes activation of all modules in `config/nadi_modules.php`.
 
+### Phase 12 (Production Security Hardening, Shared-Hosting Audit & v1.0.0)
+- **Strict Nonce-Based CSP & Security Headers (`SecurityHeaders`, `app.blade.php`, `print.blade.php`, `offline.html`)**:
+  - Generates per-request cryptographic nonces via `Vite::useCspNonce()` (with `BladeRouteGenerator::$generated = false` reset and `@routes(null, Vite::cspNonce())`), enforces `script-src 'self' 'nonce-...'` with zero `'unsafe-inline'` or `'unsafe-eval'`, eliminates all inline `onclick=` attributes, sets `frame-ancestors 'none'`, `object-src 'none'`, `X-Permitted-Cross-Domain-Policies: none`, and HTTPS `Strict-Transport-Security`.
+- **Shared-Hosting Hardening & Diagnostics (`public/.htaccess`, `NadiDoctorCommand`, `AdminDashboardController`)**:
+  - Hardened `public/.htaccess` to block dotfiles (except `.well-known/`) and set immutable 1-year cache headers on hashed `/build/assets/*`, converted closure routes in `routes/web.php` and `routes/settings.php` to `Route::inertia(...)` for `route:cache` compatibility, added `throttle:30,1` on export/import/simulation routes, implemented `php artisan nadi:doctor`, surfaced `systemHealth` on `/admin`, and bumped `config/nadi.php` version to `1.0.0`.
+
 ---
 
 ## 2. Key Architectural Decisions
@@ -88,11 +94,10 @@ All 19 migrations applied cleanly on MySQL 8.0.30 (`nadi`), including `2026_11_2
 ## 4. Verification & Test Results
 - `npx.cmd tsc --noEmit`: 0 errors.
 - `npm.cmd run build`: succeeded (`vite v6.1.1`, 2,658 modules transformed).
-- `php artisan test`: **107 passed (1,555 assertions)** — 0 failed, 0 skipped.
-  - Phase 11 Unit: `StrategyBacktestServiceTest` (zero look-ahead next-bar open execution, IDX tick & whole-lot rounding, same-bar pessimistic SL-before-TP precedence, formula-safe CSV export).
-  - Phase 11 Feature: `StrategyLabPageTest` (all 4 strategy templates, CSV export, user-isolated snapshot save/delete/403), updated `MarketAndStockPagesTest`, `PreferencesAndLocalizationTest` (67 matching `strategy_lab.*` keys in `id.json` / `en.json`).
+- `php artisan test`: **110 passed (1,631 assertions)** — 0 failed, 0 skipped.
+  - Phase 12 Feature: `ProductionHardeningTest` (3 tests verifying strict per-request CSP nonces without `unsafe-inline`/`unsafe-eval`, zero `onclick=` handlers, HSTS on HTTPS, `nadi:doctor` exit code `0`, `/up` & `/admin` `systemHealth`, and `HTTP 200` across all 20 NADI workspace routes with zero planned placeholders), plus `PreferencesAndLocalizationTest` (7 matching `admin.health.*` keys in `id.json` / `en.json`).
 - `php artisan migrate:fresh --seed --force` on MySQL 8.0.30 (`nadi`): succeeded cleanly across all 19 migrations and all seeders.
-- Synchronous Laravel HTTP Kernel verification on MySQL: `/strategy-lab`, `/strategy-lab?symbol=BBCA&strategy=rsi_mean_reversion&range=1Y`, `/strategy-lab?symbol=MSFT&strategy=macd_momentum&range=1Y`, and `/strategy-lab/export-csv?symbol=BBCA&strategy=sma_crossover&range=1Y` (`HTTP 200`, UTF-8 BOM, `739` bytes).
+- Production cache & HTTP verification on MySQL: `config:cache`, `route:cache`, and `view:cache` succeeded cleanly; `/`, `/dashboard`, `/portfolio`, `/reports/print?type=executive_statement`, `/broker-intelligence`, `/strategy-lab`, and `/admin` returned `HTTP 200` with `csp_nonce=yes` while cached (`config_cached=yes routes_cached=yes version=1.0.0`), followed by `optimize:clear` and `php artisan nadi:doctor` passing 9/9 checks.
 
 ---
 
@@ -100,10 +105,10 @@ All 19 migrations applied cleanly on MySQL 8.0.30 (`nadi`), including `2026_11_2
 - **Market holiday calendar**: Empty by default (`holidays_loaded = false`) until imported via `/admin/imports` (`market_holidays` CSV).
 - **Intraday VWAP**: Not derived from daily EOD bars (explicitly disclosed on `PriceChart`).
 - **Live broker sync**: `supports_live_sync = false` across all brokers; NADI uses manual entry and broker CSV statement imports rather than asking for brokerage passwords or OTPs.
-- **CSP header**: Deferred to Phase 12 hardening.
+- **CSP header**: Active with strict per-request nonces (`SecurityHeaders`) — no deferred security headers remaining.
 
 ---
 
-## 6. Next Actionable Tasks — Phase 12 (Production Security Hardening, Audit & v1.0.0 Release)
-1. Enable strict Content-Security-Policy (CSP) headers in `SecurityHeaders` middleware compatible with Vite bundles, ECharts canvas, TradingView Lightweight Charts, and Ziggy routes.
-2. Perform full shared-hosting production readiness audit (`config/nadi.php` `1.0.0`, `APP_DEBUG=false` & route/config cache verification, `DEPLOYMENT.md` final verification, end-to-end smoke check, and release tag/commit).
+## 6. Release Status & Post-v1.0.0 Roadmap
+- **NADI v1.0.0 Release Complete**: All 13 milestones (Phases 0–12), 19 migrations, and 20 authenticated/core routes are implemented, tested (`110 passed`, `1,631 assertions`), MySQL-verified, and shared-hosting cache-ready (`config:cache`, `route:cache`, `view:cache`, `php artisan nadi:doctor`).
+- **Optional Future Enhancements**: Licensed exchange real-time WebSocket / Level-2 market depth adapter integration when commercial market data feeds are subscribed.

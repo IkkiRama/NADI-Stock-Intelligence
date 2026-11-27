@@ -953,5 +953,12 @@
     "strategy_lab.saved.title": "Saved Backtest Snapshots",
     "strategy_lab.saved.empty": "No backtest snapshots saved yet.",
     "strategy_lab.saved.load": "Load",
-    "strategy_lab.disclaimer": "Hypothetical backtest notice: Past simulated performance (including clearly labeled Demo data) does not guarantee future live execution results, and single-stock tests do not account for survivorship bias or intraday liquidity queues."
+    "strategy_lab.disclaimer": "Hypothetical backtest notice: Past simulated performance (including clearly labeled Demo data) does not guarantee future live execution results, and single-stock tests do not account for survivorship bias or intraday liquidity queues.",
+    "admin.health.title": "Production Hardening & Shared-Hosting Readiness",
+    "admin.health.runtime": "PHP & Database",
+    "admin.health.drivers": "Session / Cache / Queue",
+    "admin.health.csp": "Security Headers & CSP",
+    "admin.health.csp_active": "Nonce CSP Active",
+    "admin.health.assets": "Precompiled Vite Assets",
+    "admin.health.assets_ready": "Manifest Present (No SSR)"
 }

@@ -33,9 +33,7 @@ use App\Http\Controllers\WatchlistController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
-Route::get('/', function () {
-    return Inertia::render('welcome');
-})->name('home');
+Route::inertia('/', 'welcome')->name('home');
 
 Route::middleware(['auth'])->group(function () {
     Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
@@ -82,22 +80,22 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('reports', [ReportsController::class, 'index'])->name('reports.index');
     Route::get('reports/print', [ReportsController::class, 'printView'])->name('reports.print');
-    Route::get('reports/export-csv', [ReportsController::class, 'exportCsv'])->name('reports.export-csv');
-    Route::get('reports/export-json', [ReportsController::class, 'exportJson'])->name('reports.export-json');
+    Route::get('reports/export-csv', [ReportsController::class, 'exportCsv'])->middleware('throttle:30,1')->name('reports.export-csv');
+    Route::get('reports/export-json', [ReportsController::class, 'exportJson'])->middleware('throttle:30,1')->name('reports.export-json');
 
     Route::get('broker-intelligence', [BrokerIntelligenceController::class, 'index'])->name('broker-intelligence.index');
-    Route::get('broker-intelligence/export-csv', [BrokerIntelligenceController::class, 'exportCsv'])->name('broker-intelligence.export-csv');
+    Route::get('broker-intelligence/export-csv', [BrokerIntelligenceController::class, 'exportCsv'])->middleware('throttle:30,1')->name('broker-intelligence.export-csv');
 
     Route::get('strategy-lab', [StrategyLabController::class, 'index'])->name('strategy-lab.index');
-    Route::post('strategy-lab/runs', [StrategyLabController::class, 'storeRun'])->name('strategy-lab.runs.store');
+    Route::post('strategy-lab/runs', [StrategyLabController::class, 'storeRun'])->middleware('throttle:30,1')->name('strategy-lab.runs.store');
     Route::delete('strategy-lab/runs/{strategyBacktestRun}', [StrategyLabController::class, 'destroyRun'])->name('strategy-lab.runs.destroy');
-    Route::get('strategy-lab/export-csv', [StrategyLabController::class, 'exportCsv'])->name('strategy-lab.export-csv');
+    Route::get('strategy-lab/export-csv', [StrategyLabController::class, 'exportCsv'])->middleware('throttle:30,1')->name('strategy-lab.export-csv');
     Route::post('portfolio/accounts', [PortfolioController::class, 'storeAccount'])->name('portfolio.accounts.store');
     Route::patch('portfolio/preferences', [PortfolioController::class, 'updatePreferences'])->name('portfolio.preferences.update');
     Route::patch('portfolio/concentration-thresholds', [PortfolioController::class, 'updateConcentrationThresholds'])->name('portfolio.thresholds.update');
     Route::post('portfolio/transactions', [PortfolioController::class, 'storeTransaction'])->name('portfolio.transactions.store');
     Route::post('portfolio/transactions/{portfolioTransaction}/reverse', [PortfolioController::class, 'reverseTransaction'])->name('portfolio.transactions.reverse');
-    Route::post('portfolio/import-csv', [PortfolioController::class, 'importCsv'])->name('portfolio.import-csv');
+    Route::post('portfolio/import-csv', [PortfolioController::class, 'importCsv'])->middleware('throttle:30,1')->name('portfolio.import-csv');
     Route::get('portfolio/transactions/export', [PortfolioController::class, 'exportTransactions'])->name('portfolio.transactions.export');
     Route::post('portfolio/reconcile', [PortfolioController::class, 'reconcile'])->name('portfolio.reconcile');
 
@@ -134,7 +132,7 @@ Route::middleware(['auth'])->group(function () {
                 ->middleware('can:manage-imports')
                 ->name('imports.index');
             Route::post('imports/csv', [DataImportController::class, 'importCsv'])
-                ->middleware('can:manage-imports')
+                ->middleware(['can:manage-imports', 'throttle:30,1'])
                 ->name('imports.csv');
             Route::post('imports/refresh', [DataImportController::class, 'refreshAnalytics'])
                 ->middleware('can:manage-imports')
