@@ -14,8 +14,10 @@ class DatabaseSeeder extends Seeder
             MarketUniverseSeeder::class,
             DataSourceSeeder::class,
             FeatureFlagSeeder::class,
+            ScoringConfigSeeder::class,
             AdminUserSeeder::class,
             DemoPriceSeeder::class,
+            DemoMarketIntelligenceSeeder::class,
         ]);
     }
 }

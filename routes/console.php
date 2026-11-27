@@ -12,3 +12,8 @@ Schedule::command('nadi:refresh-quotes')
     ->dailyAt('17:30')
     ->timezone('Asia/Jakarta')
     ->withoutOverlapping();
+
+Schedule::command('nadi:refresh-analytics')
+    ->dailyAt('17:45')
+    ->timezone('Asia/Jakarta')
+    ->withoutOverlapping();

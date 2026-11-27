@@ -27,6 +27,7 @@ interface StockRow {
     change: string | null;
     change_pct: string | null;
     volume: number | null;
+    overall_score: string | null;
     as_of: string | null;
     is_demo: boolean;
 }
@@ -144,6 +145,16 @@ export default function StocksIndex({ stocks, exchanges, sectors, watchlistedIds
             header: renderSortHeader('volume', t('stocks.col.volume')),
             align: 'right',
             cell: (row) => <span className="num text-xs">{formatCompact(row.volume, locale)}</span>,
+        },
+        {
+            key: 'overall_score',
+            header: renderSortHeader('overall_score', 'Score'),
+            align: 'right',
+            cell: (row) => (
+                <span className="num border-border bg-muted rounded border px-1.5 py-0.5 text-xs font-semibold">
+                    {row.overall_score ?? '—'}
+                </span>
+            ),
         },
         {
             key: 'actions',

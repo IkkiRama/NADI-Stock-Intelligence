@@ -7,6 +7,8 @@ return [
         'manage-data-sources',
         'manage-feature-flags',
         'view-audit-logs',
+        'manage-imports',
+        'manage-scoring',
     ],
 
     'roles' => [
@@ -16,6 +18,8 @@ return [
             'manage-data-sources',
             'manage-feature-flags',
             'view-audit-logs',
+            'manage-imports',
+            'manage-scoring',
         ],
         'editor' => [],
         'user' => [],

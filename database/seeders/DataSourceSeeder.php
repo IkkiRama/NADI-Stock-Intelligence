@@ -14,11 +14,11 @@ class DataSourceSeeder extends Seeder
             [
                 'name' => 'NADI Demo Market Generator',
                 'type' => 'demo',
-                'datasets' => ['prices_daily', 'index_values_daily'],
+                'datasets' => ['prices_daily', 'index_values_daily', 'financial_statements', 'corporate_actions', 'fx_rates_daily'],
                 'is_enabled' => (bool) config('nadi.market_data.demo.enabled', true),
                 'is_demo' => true,
                 'attribution' => 'Synthetic Demonstration Series (Not Real Market Data)',
-                'license_notes' => 'Deterministic pseudo-random OHLCV series generated locally for UI and analytics demonstration only.',
+                'license_notes' => 'Deterministic pseudo-random OHLCV, fundamental, and corporate action series generated locally for UI and analytics demonstration only.',
                 'config' => ['generator' => 'geometric_random_walk_v1'],
             ],
         );
@@ -28,12 +28,12 @@ class DataSourceSeeder extends Seeder
             [
                 'name' => 'Manual CSV / Statement Importer',
                 'type' => 'csv',
-                'datasets' => ['prices_daily', 'index_values_daily', 'corporate_actions'],
-                'is_enabled' => false,
+                'datasets' => ['prices_daily', 'market_holidays', 'financial_statements', 'corporate_actions'],
+                'is_enabled' => true,
                 'is_demo' => false,
                 'attribution' => 'User-supplied market data imports',
-                'license_notes' => 'Scheduled for Phase 2 (Market Intelligence importers).',
-                'config' => ['status_note' => 'Phase 2'],
+                'license_notes' => 'Supports CSV uploads via Admin Import & Sync Manager with formula-injection sanitization.',
+                'config' => ['status_note' => 'Active (Phase 2)'],
             ],
         );
     }

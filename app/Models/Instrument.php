@@ -47,4 +47,34 @@ class Instrument extends Model
     {
         return $this->hasOne(InstrumentQuoteLatest::class);
     }
+
+    public function corporateActions(): HasMany
+    {
+        return $this->hasMany(CorporateAction::class)->orderByDesc('ex_date');
+    }
+
+    public function financialStatements(): HasMany
+    {
+        return $this->hasMany(FinancialStatement::class)->orderByDesc('period_end_date');
+    }
+
+    public function latestFundamentals(): HasOne
+    {
+        return $this->hasOne(InstrumentFundamentalLatest::class);
+    }
+
+    public function latestTechnicals(): HasOne
+    {
+        return $this->hasOne(InstrumentTechnicalLatest::class);
+    }
+
+    public function latestScore(): HasOne
+    {
+        return $this->hasOne(InstrumentScore::class);
+    }
+
+    public function scoreHistory(): HasMany
+    {
+        return $this->hasMany(InstrumentScoreHistory::class)->orderBy('score_date');
+    }
 }

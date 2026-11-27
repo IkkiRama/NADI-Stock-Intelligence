@@ -3,7 +3,7 @@ import { useT } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { type BreadcrumbItem } from '@/types';
 import { Link } from '@inertiajs/react';
-import { Database, Flag, LayoutDashboard, ScrollText, ShieldCheck, Users } from 'lucide-react';
+import { Database, Flag, LayoutDashboard, ScrollText, ShieldCheck, Sliders, UploadCloud, Users } from 'lucide-react';
 import { type ReactNode } from 'react';
 
 interface AdminLayoutProps {
@@ -19,6 +19,8 @@ export default function AdminLayout({ children, breadcrumbs = [] }: AdminLayoutP
         { title: t('admin.nav.dashboard'), href: '/admin', icon: LayoutDashboard, exact: true },
         { title: t('admin.nav.users'), href: '/admin/users', icon: Users, exact: false },
         { title: t('admin.nav.data_sources'), href: '/admin/data-sources', icon: Database, exact: false },
+        { title: t('admin.nav.imports'), href: '/admin/imports', icon: UploadCloud, exact: false },
+        { title: t('admin.nav.scoring'), href: '/admin/scoring', icon: Sliders, exact: false },
         { title: t('admin.nav.feature_flags'), href: '/admin/feature-flags', icon: Flag, exact: false },
         { title: t('admin.nav.audit_logs'), href: '/admin/audit-logs', icon: ScrollText, exact: false },
     ];

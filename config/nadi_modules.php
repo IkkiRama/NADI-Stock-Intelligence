@@ -1,18 +1,6 @@
 <?php
 
 return [
-    'heatmap' => [
-        'slug' => 'heatmap',
-        'phase' => 2,
-        'title_key' => 'nav.heatmap',
-        'description_key' => 'planned.heatmap.desc',
-    ],
-    'screener' => [
-        'slug' => 'screener',
-        'phase' => 2,
-        'title_key' => 'nav.screener',
-        'description_key' => 'planned.screener.desc',
-    ],
     'opportunities' => [
         'slug' => 'opportunities',
         'phase' => 3,

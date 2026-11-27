@@ -46,9 +46,9 @@ export const nadiNavigationGroups: NadiNavGroup[] = [
         groupKey: 'nav.group.markets',
         items: [
             { key: 'nav.global_markets', href: '/markets', icon: Globe2, status: 'available', phase: 1 },
-            { key: 'nav.heatmap', href: '/segera/heatmap', icon: Grid3X3, status: 'planned', phase: 2 },
+            { key: 'nav.heatmap', href: '/heatmap', icon: Grid3X3, status: 'available', phase: 2 },
             { key: 'nav.stock_explorer', href: '/stocks', icon: Compass, status: 'available', phase: 1 },
-            { key: 'nav.screener', href: '/segera/screener', icon: Filter, status: 'planned', phase: 2 },
+            { key: 'nav.screener', href: '/screener', icon: Filter, status: 'available', phase: 2 },
         ],
     },
     {

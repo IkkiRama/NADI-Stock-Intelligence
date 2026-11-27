@@ -35,4 +35,10 @@ return [
         ],
     ],
 
+    'market_data_eod' => [
+        'base_url' => env('NADI_EOD_API_URL'),
+        'api_key' => env('NADI_EOD_API_KEY'),
+        'timeout' => (int) env('NADI_EOD_API_TIMEOUT', 15),
+    ],
+
 ];

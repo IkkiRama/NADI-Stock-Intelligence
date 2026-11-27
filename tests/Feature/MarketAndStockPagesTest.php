@@ -5,10 +5,12 @@ namespace Tests\Feature;
 use App\Models\Instrument;
 use App\Models\User;
 use Database\Seeders\DataSourceSeeder;
+use Database\Seeders\DemoMarketIntelligenceSeeder;
 use Database\Seeders\DemoPriceSeeder;
 use Database\Seeders\ExchangeSeeder;
 use Database\Seeders\MarketUniverseSeeder;
 use Database\Seeders\RoleSeeder;
+use Database\Seeders\ScoringConfigSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
@@ -25,7 +27,9 @@ class MarketAndStockPagesTest extends TestCase
             ExchangeSeeder::class,
             MarketUniverseSeeder::class,
             DataSourceSeeder::class,
+            ScoringConfigSeeder::class,
             DemoPriceSeeder::class,
+            DemoMarketIntelligenceSeeder::class,
         ]);
     }
 
@@ -48,7 +52,7 @@ class MarketAndStockPagesTest extends TestCase
             );
     }
 
-    public function test_stock_explorer_and_detail_render_with_bars_and_unknown_routes_return_404(): void
+    public function test_stock_explorer_and_detail_render_with_phase2_intelligence_and_unknown_routes_return_404(): void
     {
         $user = User::factory()->create();
 
@@ -64,12 +68,19 @@ class MarketAndStockPagesTest extends TestCase
                 ->component('stocks/show')
                 ->where('instrument.symbol', 'BBCA')
                 ->has('bars', 260)
+                ->has('fundamentals')
+                ->has('technicals')
+                ->has('score')
+                ->has('corporateActions')
+                ->has('indicatorSeries.sma20')
             );
 
         $this->actingAs($user)->get('/stocks/idx/unknown')->assertNotFound();
         $this->actingAs($user)->get('/markets/indices/unknown')->assertNotFound();
         $this->actingAs($user)->get('/segera/unknown-module')->assertNotFound();
-        $this->actingAs($user)->get('/segera/heatmap')->assertOk();
+        $this->actingAs($user)->get('/segera/heatmap')->assertRedirect('/heatmap');
+        $this->actingAs($user)->get('/segera/screener')->assertRedirect('/screener');
+        $this->actingAs($user)->get('/segera/opportunities')->assertOk();
     }
 
     public function test_watchlist_add_and_remove_are_scoped_to_authenticated_user(): void

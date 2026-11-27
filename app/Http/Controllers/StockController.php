@@ -3,11 +3,15 @@
 namespace App\Http\Controllers;
 
 use App\Domain\Analytics\Services\PriceReturnService;
+use App\Domain\Analytics\Services\TechnicalIndicatorService;
+use App\Domain\MarketData\Actions\RefreshMarketIntelligence;
 use App\Domain\MarketData\Services\MarketClockService;
 use App\Models\Exchange;
+use App\Models\IndexValueDaily;
 use App\Models\Instrument;
 use App\Models\InstrumentPriceDaily;
 use App\Models\RecentView;
+use App\Models\StockIndex;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -28,12 +32,15 @@ class StockController extends Controller
             'close' => 'instrument_quotes_latest.close',
             'change_pct' => 'instrument_quotes_latest.change_pct',
             'volume' => 'instrument_quotes_latest.volume',
+            'overall_score' => 'instrument_scores.overall_score',
         ];
         $orderColumn = $sortMap[$sort] ?? 'instruments.symbol';
 
         $query = Instrument::query()
             ->join('exchanges', 'exchanges.id', '=', 'instruments.exchange_id')
             ->leftJoin('instrument_quotes_latest', 'instrument_quotes_latest.instrument_id', '=', 'instruments.id')
+            ->leftJoin('instrument_fundamentals_latest', 'instrument_fundamentals_latest.instrument_id', '=', 'instruments.id')
+            ->leftJoin('instrument_scores', 'instrument_scores.instrument_id', '=', 'instruments.id')
             ->where('instruments.is_active', true)
             ->select([
                 'instruments.id',
@@ -49,6 +56,8 @@ class StockController extends Controller
                 'instrument_quotes_latest.volume',
                 'instrument_quotes_latest.trade_date as as_of',
                 'instrument_quotes_latest.is_demo',
+                'instrument_fundamentals_latest.market_cap',
+                'instrument_scores.overall_score',
             ]);
 
         if ($exchangeFilter !== '' && $exchangeFilter !== 'ALL') {
@@ -82,6 +91,8 @@ class StockController extends Controller
                 'change' => $row->change !== null ? (string) $row->change : null,
                 'change_pct' => $row->change_pct !== null ? (string) $row->change_pct : null,
                 'volume' => $row->volume !== null ? (int) $row->volume : null,
+                'market_cap' => $row->market_cap !== null ? (string) $row->market_cap : null,
+                'overall_score' => $row->overall_score !== null ? (string) $row->overall_score : null,
                 'as_of' => $row->as_of ? substr((string) $row->as_of, 0, 10) : null,
                 'is_demo' => (bool) $row->is_demo,
             ];
@@ -112,6 +123,7 @@ class StockController extends Controller
         string $exchange,
         string $symbol,
         PriceReturnService $returns,
+        TechnicalIndicatorService $technicalsService,
         MarketClockService $clock,
     ): Response {
         $exchangeModel = Exchange::query()
@@ -121,7 +133,15 @@ class StockController extends Controller
             ->firstOrFail();
 
         $instrument = Instrument::query()
-            ->with(['latestQuote.dataSource:id,code,name'])
+            ->with([
+                'latestQuote.dataSource:id,code,name',
+                'latestFundamentals.dataSource:id,code,name',
+                'latestTechnicals',
+                'latestScore',
+                'scoreHistory',
+                'corporateActions',
+                'financialStatements',
+            ])
             ->where('exchange_id', $exchangeModel->id)
             ->whereRaw('LOWER(symbol) = ?', [strtolower($symbol)])
             ->where('is_active', true)
@@ -169,12 +189,41 @@ class StockController extends Controller
             ];
         }
 
+        $indicatorSeries = $technicalsService->computeSeries($bars);
+
+        // Optional benchmark comparison overlay (country's primary index)
+        $benchmarkCode = RefreshMarketIntelligence::COUNTRY_BENCHMARK_MAP[$instrument->country_code] ?? null;
+        $benchmarkOverlay = null;
+        if ($benchmarkCode && ! empty($bars)) {
+            $benchIndex = StockIndex::query()->where('code', $benchmarkCode)->first();
+            if ($benchIndex) {
+                $minDate = $bars[0]['date'];
+                $benchBars = IndexValueDaily::query()
+                    ->where('stock_index_id', $benchIndex->id)
+                    ->whereDate('trade_date', '>=', $minDate)
+                    ->orderBy('trade_date')
+                    ->get(['trade_date', 'close'])
+                    ->map(fn ($b) => ['date' => $b->trade_date->toDateString(), 'close' => (string) $b->close])
+                    ->all();
+
+                $benchmarkOverlay = [
+                    'code' => $benchIndex->code,
+                    'name' => $benchIndex->name,
+                    'points' => $benchBars,
+                ];
+            }
+        }
+
         $latestBar = $barsCollection->last();
         $quote = $instrument->latestQuote;
         $watchlist = $request->user()->watchlists()->where('is_default', true)->first();
         $inWatchlist = $watchlist
             ? $watchlist->items()->where('instrument_id', $instrument->id)->exists()
             : false;
+
+        $fund = $instrument->latestFundamentals;
+        $tech = $instrument->latestTechnicals;
+        $score = $instrument->latestScore;
 
         return Inertia::render('stocks/show', [
             'instrument' => [
@@ -220,6 +269,93 @@ class StockController extends Controller
                 'return_1y' => $returns->periodReturn($closes, '1Y'),
             ],
             'bars' => $bars,
+            'indicatorSeries' => $indicatorSeries,
+            'benchmarkOverlay' => $benchmarkOverlay,
+            'fundamentals' => $fund ? [
+                'as_of_date' => $fund->as_of_date->toDateString(),
+                'period_label' => $fund->period_label,
+                'statement_currency' => $fund->statement_currency,
+                'market_cap' => $fund->market_cap !== null ? (string) $fund->market_cap : null,
+                'market_cap_idr' => $fund->market_cap_idr !== null ? (string) $fund->market_cap_idr : null,
+                'eps' => $fund->eps !== null ? (string) $fund->eps : null,
+                'per' => $fund->per !== null ? (string) $fund->per : null,
+                'pbv' => $fund->pbv !== null ? (string) $fund->pbv : null,
+                'roe' => $fund->roe !== null ? (string) $fund->roe : null,
+                'roa' => $fund->roa !== null ? (string) $fund->roa : null,
+                'der' => $fund->der !== null ? (string) $fund->der : null,
+                'current_ratio' => $fund->current_ratio !== null ? (string) $fund->current_ratio : null,
+                'net_margin' => $fund->net_margin !== null ? (string) $fund->net_margin : null,
+                'revenue_growth_yoy' => $fund->revenue_growth_yoy !== null ? (string) $fund->revenue_growth_yoy : null,
+                'earnings_growth_yoy' => $fund->earnings_growth_yoy !== null ? (string) $fund->earnings_growth_yoy : null,
+                'ocf' => $fund->ocf !== null ? (string) $fund->ocf : null,
+                'fcf' => $fund->fcf !== null ? (string) $fund->fcf : null,
+                'dividend_yield' => $fund->dividend_yield !== null ? (string) $fund->dividend_yield : null,
+                'dividend_payout_ratio' => $fund->dividend_payout_ratio !== null ? (string) $fund->dividend_payout_ratio : null,
+                'is_financial_sector' => (bool) $fund->is_financial_sector,
+                'missing_fields' => $fund->missing_fields ?? [],
+                'is_demo' => (bool) $fund->is_demo,
+                'source' => $fund->dataSource?->name ?? 'Demo',
+            ] : null,
+            'statements' => $instrument->financialStatements->take(4)->map(fn ($s): array => [
+                'period_label' => "{$s->period_type} {$s->fiscal_year}",
+                'period_end_date' => $s->period_end_date->toDateString(),
+                'published_at' => $s->published_at->toDateString(),
+                'currency' => $s->currency,
+                'revenue' => $s->revenue !== null ? (string) $s->revenue : null,
+                'net_income' => $s->net_income !== null ? (string) $s->net_income : null,
+                'total_assets' => $s->total_assets !== null ? (string) $s->total_assets : null,
+                'total_equity' => $s->total_equity !== null ? (string) $s->total_equity : null,
+                'operating_cash_flow' => $s->operating_cash_flow !== null ? (string) $s->operating_cash_flow : null,
+                'free_cash_flow' => $s->free_cash_flow !== null ? (string) $s->free_cash_flow : null,
+                'is_demo' => (bool) $s->is_demo,
+            ])->values()->all(),
+            'technicals' => $tech ? [
+                'trade_date' => $tech->trade_date->toDateString(),
+                'sma_20' => $tech->sma_20 !== null ? (string) $tech->sma_20 : null,
+                'sma_50' => $tech->sma_50 !== null ? (string) $tech->sma_50 : null,
+                'sma_200' => $tech->sma_200 !== null ? (string) $tech->sma_200 : null,
+                'ema_20' => $tech->ema_20 !== null ? (string) $tech->ema_20 : null,
+                'rsi_14' => $tech->rsi_14 !== null ? (string) $tech->rsi_14 : null,
+                'macd_line' => $tech->macd_line !== null ? (string) $tech->macd_line : null,
+                'macd_signal' => $tech->macd_signal !== null ? (string) $tech->macd_signal : null,
+                'macd_hist' => $tech->macd_hist !== null ? (string) $tech->macd_hist : null,
+                'atr_14' => $tech->atr_14 !== null ? (string) $tech->atr_14 : null,
+                'obv' => $tech->obv,
+                'volatility_20d' => $tech->volatility_20d !== null ? (string) $tech->volatility_20d : null,
+                'relative_strength_1m' => $tech->relative_strength_1m !== null ? (string) $tech->relative_strength_1m : null,
+            ] : null,
+            'score' => $score ? [
+                'as_of_date' => $score->as_of_date->toDateString(),
+                'overall_score' => (string) $score->overall_score,
+                'fundamentals_score' => $score->fundamentals_score !== null ? (string) $score->fundamentals_score : null,
+                'valuation_score' => $score->valuation_score !== null ? (string) $score->valuation_score : null,
+                'technical_score' => $score->technical_score !== null ? (string) $score->technical_score : null,
+                'risk_score' => $score->risk_score !== null ? (string) $score->risk_score : null,
+                'catalysts_score' => $score->catalysts_score !== null ? (string) $score->catalysts_score : null,
+                'sector_percentile' => $score->sector_percentile !== null ? (string) $score->sector_percentile : null,
+                'data_coverage' => (string) $score->data_coverage,
+                'reasons' => $score->reasons ?? [],
+                'missing_indicators' => $score->missing_indicators ?? [],
+                'weights_used' => $score->weights_used ?? [],
+                'calculation_version' => $score->calculation_version,
+                'is_demo' => (bool) $score->is_demo,
+            ] : null,
+            'scoreHistory' => $instrument->scoreHistory->map(fn ($h): array => [
+                'date' => $h->score_date->toDateString(),
+                'overall_score' => (string) $h->overall_score,
+            ])->values()->all(),
+            'corporateActions' => $instrument->corporateActions->map(fn ($a): array => [
+                'id' => $a->id,
+                'action_type' => $a->action_type,
+                'ex_date' => $a->ex_date->toDateString(),
+                'payment_date' => $a->payment_date?->toDateString(),
+                'declared_currency' => $a->declared_currency,
+                'cash_amount' => $a->cash_amount !== null ? (string) $a->cash_amount : null,
+                'ratio_numerator' => $a->ratio_numerator !== null ? (string) $a->ratio_numerator : null,
+                'ratio_denominator' => $a->ratio_denominator !== null ? (string) $a->ratio_denominator : null,
+                'notes' => $a->notes,
+                'is_demo' => (bool) $a->is_demo,
+            ])->values()->all(),
             'inWatchlist' => $inWatchlist,
         ]);
     }

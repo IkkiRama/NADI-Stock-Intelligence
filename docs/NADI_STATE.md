@@ -2,72 +2,67 @@
 
 **Last Updated**: 2026-11-27
 **Project Path**: `D:\laragon\www\nadi`
-**Current Phase**: Phase 1 Complete — Ready for **Phase 2 (Market Intelligence)**
+**Current Phase**: Phase 2 Complete — Ready for **Phase 3 (Stock Safety & Trading Signals)**
 
 ---
 
-## 1. Completed Modules (Phase 0 & Phase 1)
-- **Foundation & Auth**: Laravel 12.74 + Inertia v2 + Ziggy + React 19 + TypeScript + Tailwind CSS v4 monolith (`laravel/react-starter-kit` v1.0.1), user authentication, `EnsureUserIsActive` enforcement, `last_login_at` tracking, baseline `SecurityHeaders`.
-- **RBAC & Admin Panel (`/admin`)**: Roles (`admin`, `editor`, `user`), permission Gates in `AppServiceProvider`, Admin Dashboard, User & Role management (with self-demotion/self-deactivation protection), Data Source toggle, Feature Flag toggle (cache-invalidating), and immutable `AuditLog` tracking.
-- **Localization & Preferences (`/settings/preferences`)**: Default Bahasa Indonesia (`id`) + English (`en`) via shared `lang/{locale}.json` translations (`id.json` & `en.json` key-parity tested), `SetLocale` middleware, Light/Dark/System theme, Compact/Comfortable density, Simple/Pro mode, reporting currency (`IDR` default), default market, chart timeframe, and display timezone.
-- **Design System & Navigation**: Modern Editorial Fintech tokens (`#F7F8FA`/`#FFFFFF`/`#263447` light; `#111827`/`#192231`/`#E8EDF5` dark; lavender/sage/coral/ice with accessible ink variants), tabular numerals (`.num`), self-hosted `@fontsource-variable/inter`, grouped collapsible sidebar with Phase badges (`P2`–`P12`), `/segera/{slug}` planned module pages, optional contextual right panel + mobile Sheet, Command Palette (`cmdk`, `Ctrl/Cmd+K`, `/` with `/search` typo tolerance), and keyboard shortcuts (`?`, `g o/m/e/s`).
-- **Market Foundation & Labeled Demo Data**:
-  - Exact decimal math helper (`App\Support\Math\Dec` using `brick/math`).
-  - Exchange tick-size rules (`TickSize`) & market session clock (`MarketClockService` without fabricated holidays).
-  - Return analytics (`PriceReturnService`: `1D`, `1W`, `1M`, `3M`, `6M`, `YTD`, `1Y`, 52W high/low, 20D avg volume).
-  - `MarketDataProvider` adapter contract + deterministic `DemoMarketDataProvider` (`SeededRandom`).
-  - Precomputed `instrument_quotes_latest` & `index_quotes_latest` refreshed via `RefreshLatestQuotes` (`php artisan nadi:refresh-quotes`, scheduled daily in `routes/console.php`).
-  - Overview Dashboard (`/dashboard`) with customizable widget visibility/order, Global Markets (`/markets`, `/markets/indices/{code}`), Stock Explorer (`/stocks`, `/stocks/{exchange}/{symbol}`) with TradingView `lightweight-charts` v5, and per-user Watchlist.
-- **PWA**: `manifest.webmanifest`, SVG icons, `offline.html`, and `sw.js` caching only fingerprinted `/build/assets/*` in production.
+## 1. Completed Modules
+### Phase 0 & Phase 1 (Foundation & Premium UI)
+- Laravel 12.74 + Inertia v2 + Ziggy + React 19 + TypeScript + Tailwind CSS v4 monolith (`0be0930`).
+- Authentication, `EnsureUserIsActive`, RBAC + audit-logged Admin Panel (`/admin`), ID/EN i18n, Workspace Preferences (`/settings/preferences`), Editorial Fintech design system, Command Palette (`Ctrl/Cmd+K`), Overview Dashboard (`/dashboard`), Global Markets (`/markets`, `/markets/indices/{code}`), Stock Explorer (`/stocks`), Watchlist, and PWA asset cache.
+
+### Phase 2 (Market Intelligence)
+- **FX & Importers**:
+  - `FxConversionService` (direct, inverse, and IDR-triangulated lookup).
+  - `CsvMarketImporter` + `CsvSanitizer` supporting idempotent chunked CSV uploads for `prices_daily`, `market_holidays`, `financial_statements`, and `corporate_actions` with OHLC invariant validation and spreadsheet formula-injection protection.
+  - `ConfigurableHttpEodProvider` adapter stub (`config/services.php` `market_data_eod`; never fabricates data when unconfigured).
+  - Admin Imports & Sync center (`/admin/imports`, `can:manage-imports`) with `DataImportRun` audit history and batch analytics trigger (`php artisan nadi:refresh-analytics`, scheduled daily in `routes/console.php`).
+- **Quantitative Analytics Engines**:
+  - `FundamentalCalculator`: point-in-time (`published_at <= asOfDate`), extraordinary items adjustment, cross-currency statement conversion (`ADRO` USD→IDR demo case), negative earnings handling (`GOTO` `per = null`), and Financials sector rules (`DER = total_liabilities / total_equity`, `current_ratio`/`FCF` omitted).
+  - `TechnicalIndicatorService`: SMA(20/50/200), EMA(20/50), Wilder RSI(14), MACD(12,26,9), Bollinger Bands(20,2), Wilder ATR(14), OBV, and annualized 20D volatility.
+  - `StockScoringService`: transparent 0–100 scoring across 5 configurable weights (default 30/25/20/15/10), `data_coverage`, `sector_percentile`, `reasons`, `missing_indicators`, and `/admin/scoring` configuration UI (`can:manage-scoring`).
+- **Market Intelligence UI**:
+  - Interactive **Market Heatmap** (`/heatmap`) powered by tree-shaken Apache `echarts` v6 (market/watchlist scope, exchange/sector filters, size/color metrics, fullscreen, drill-down).
+  - **Stock Screener** (`/screener`) with multi-factor filters, sorting, saved user presets (`saved_screeners`), watchlist toggle, and formula-safe CSV export (`/screener/export`).
+  - Upgraded **Stock Detail** (`/stocks/{exchange}/{symbol}`) and `PriceChart` (`lightweight-charts` v5): SMA/EMA/Bollinger overlays, benchmark `%` comparison overlay, synchronized RSI/MACD/ATR/OBV sub-pane, `createSeriesMarkers` corporate-action markers, PNG screenshot download, fundamentals, statements, technical summary, and score breakdown.
 
 ---
 
 ## 2. Key Architectural Decisions
-- **Framework**: Laravel 12.74 (`^12.0`, PHP `^8.2`) + Ziggy (`tightenco/ziggy`). *Planned upgrade*: upgrade to Laravel 13 before Laravel 12 security EOL (~Feb 2027).
+- **Framework**: Laravel 12.74 (`^12.0`, PHP `^8.2`) + Ziggy. Planned upgrade to Laravel 13 before Feb 2027 security EOL.
 - **Shared Hosting Compatibility**: Monolithic Laravel + MySQL (`SESSION_DRIVER=database`, `CACHE_STORE=database`, `QUEUE_CONNECTION=sync`), precompiled Vite assets (`npm.cmd run build`, no SSR), no Node/Python/Docker/Redis in production.
-- **MySQL Query Compatibility**: No SQL window functions or CTEs; latest quotes are precomputed in dedicated tables.
-- **Decimal Arithmetic**: `brick/math` strings across PHP services and Inertia JSON props; formatted in browser with `Intl`.
+- **MySQL Query Compatibility**: No SQL window functions or CTEs; precomputed snapshot tables (`*_quotes_latest`, `instrument_fundamentals_latest`, `instrument_technicals_latest`, `instrument_scores`).
+- **Decimal Arithmetic**: `brick/math` (`Dec` helper) across backend services + explicit Eloquent `decimal:N` casts for SQLite/MySQL parity.
 
 ---
 
 ## 3. Database Migration Status
-All 10 migrations applied cleanly on MySQL 8.0.30 (`nadi`):
-- `0001_01_01_000000_create_users_table`
-- `0001_01_01_000001_create_cache_table`
-- `0001_01_01_000002_create_jobs_table`
-- `2026_11_27_000001_add_nadi_columns_to_users_table`
-- `2026_11_27_000002_create_roles_tables`
-- `2026_11_27_000003_create_user_settings_table`
-- `2026_11_27_000004_create_exchanges_and_holidays_tables`
-- `2026_11_27_000005_create_instruments_and_indices_tables`
-- `2026_11_27_000006_create_market_data_tables`
-- `2026_11_27_000007_create_user_activity_and_admin_tables`
-
-Seeded demo counts verified on MySQL: `35` active equities across 7 exchanges, `8` benchmark indices, `9,100` daily equity bars (`35 × 260` weekdays), `35` latest equity quotes.
+All 11 migrations applied cleanly on MySQL 8.0.30 (`nadi`), including `2026_11_27_100001_create_phase2_market_intelligence_tables`.
+Verified MySQL demo seed counts: `35` instruments, `8` indices, `9,100` daily equity bars, `70` financial statements, `35` corporate actions, `35` fundamental snapshots, `35` technical snapshots, `35` stock scores.
 
 ---
 
 ## 4. Verification & Test Results
-- `php artisan test`: **49 passed (442 assertions)** — 0 failed, 0 skipped (Unit: `DecTest`, `TickSizeTest`, `PriceReturnServiceTest`, `MarketClockServiceTest`, `DemoMarketDataProviderTest`, `RefreshLatestQuotesTest`, `ExampleTest`; Feature: `DashboardTest`, `GlobalSearchTest`, `PreferencesAndLocalizationTest`, `MarketAndStockPagesTest`, `AdminAccessAndAuditTest`, plus starter-kit `Auth/*` and `Settings/*` suites).
+- `php artisan test`: **58 passed (556 assertions)** — 0 failed, 0 skipped (Duration: 45.10s).
+  - Unit: `DecTest`, `TickSizeTest`, `PriceReturnServiceTest`, `MarketClockServiceTest`, `DemoMarketDataProviderTest`, `RefreshLatestQuotesTest`, `FundamentalCalculatorTest`, `TechnicalIndicatorServiceTest`, `StockScoringServiceTest`, `CsvMarketImporterTest`, `ExampleTest`.
+  - Feature: `DashboardTest`, `GlobalSearchTest`, `PreferencesAndLocalizationTest`, `MarketAndStockPagesTest`, `AdminAccessAndAuditTest`, `HeatmapAndScreenerTest`, `AdminImportAndScoringTest`, plus starter-kit `Auth/*` and `Settings/*` suites.
 - `npx.cmd tsc --noEmit`: 0 errors.
-- `npm.cmd run build`: succeeded (`public/build/manifest.json` + chunks).
-- `php artisan migrate:fresh --seed --force` on MySQL 8.0.30: succeeded.
-- HTTP smoke test (`php artisan serve --port=8123`): `/` → HTTP `200`, `/login` → HTTP `200`.
+- `npm.cmd run build`: succeeded (`vite v6.1.1`, 2,634 modules transformed).
+- `php artisan migrate:fresh --seed --force` on MySQL 8.0.30: succeeded (`fund=35`, `tech=35`, `scores=35`).
+- HTTP smoke test (`php artisan serve --port=8124`): `/` → HTTP `200`, `/login` → HTTP `200`.
 
 ---
 
 ## 5. Known Issues & Limitations
-- **Market holiday calendar**: No holiday dates are seeded in Phase 1 (`holidays_loaded = false`); UI explicitly displays *"Kalender libur belum diimpor"* until Phase 2 importers populate `market_holidays`.
-- **Exchange lot-size verification**: SGX and HKEX board lots carry `metadata.lot_size_verified = false` until verified against exchange master files.
-- **Local Node 22 binary**: `D:\laragon\bin\nodejs\node-v22.14.0-win-x64` has broken `npm` on this host; use Node 20 (`node-v20.14.0-win-x64`) with `npm.cmd`/`npx.cmd`.
-- **CSP header**: Deferred to Phase 12 hardening (baseline security headers active).
+- **Market holiday calendar**: Empty by default (`holidays_loaded = false`) until imported via `/admin/imports` (`market_holidays` CSV).
+- **Intraday VWAP**: Not derived from daily EOD bars (explicitly disclosed on `PriceChart`).
+- **Lot size verification**: SGX/HKEX board lots remain flagged `lot_size_verified = false`.
+- **CSP header**: Deferred to Phase 12 hardening.
 
 ---
 
-## 6. Next Actionable Tasks — Phase 2 (Market Intelligence)
-1. Implement CSV & configurable external EOD price/index/holiday/corporate-action provider importers + `data_import_jobs` / `data_synchronization_logs` + bounded batch scheduler.
-2. Add Apache ECharts (`echarts`) and build interactive **Market Heatmap** (`/heatmap`) with market/index/sector filters, sizing/color modes, drill-down, and fullscreen.
-3. Build **Fundamental Engine** (financial statement schema, sector-aware ratio calculations, point-in-time valuation).
-4. Build **Technical Indicator Engine** (SMA, EMA, RSI, MACD, Bollinger Bands, ATR, OBV) and integrate overlays into `PriceChart`.
-5. Build **Stock Screener** (`/screener`) with multi-factor filters, sorting, saved configs, and CSV export.
-6. Implement transparent 0–100 **Stock Scoring** system with configurable weights and missing-data indicators.
+## 6. Next Actionable Tasks — Phase 3 (Stock Safety & Trading Signals)
+1. Implement **NADI Stock Safety** engine & schema (`stock_safety_assessments`): detect abnormal price moves, volume spikes, volatility shocks, thin liquidity, price gaps, fundamental divergence, and suspension/monitoring flags (0–100 risk score, category, triggered rules, data confidence, and never asserting definitive manipulation).
+2. Implement **Smart Entry & Exit** planner (`trading_signals` & signal history): rule-based entry zone, confirmation, stop-loss, multiple profit targets, risk/reward ratio, position sizing, capital at risk, invalidation rules, and exchange-specific `TickSize` / lot rules; suppress BUY signals when Stock Safety safeguards trigger.
+3. Add **Chart Overlays** (support/resistance levels, entry/stop-loss/target lines, historical signal markers on `PriceChart`).
+4. Build **Opportunities**, **Stock Safety**, **Smart Entry & Exit**, and **Alerts & Calendar** UI modules (replacing their Phase 3 `/segera/*` placeholders).

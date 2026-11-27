@@ -89,6 +89,11 @@ class User extends Authenticatable
         return $this->hasMany(Watchlist::class);
     }
 
+    public function savedScreeners(): HasMany
+    {
+        return $this->hasMany(SavedScreener::class)->orderByDesc('updated_at');
+    }
+
     public function hasRole(string $slug): bool
     {
         if ($this->relationLoaded('roles')) {

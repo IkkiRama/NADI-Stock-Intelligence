@@ -1,17 +1,24 @@
 import { ChangeBadge } from '@/components/nadi/change-badge';
 import { DataFreshness } from '@/components/nadi/data-freshness';
+import { DemoBadge } from '@/components/nadi/demo-badge';
+import { EmptyState } from '@/components/nadi/empty-state';
 import { MarketStatusBadge } from '@/components/nadi/market-status-badge';
 import { ModuleEmptyState } from '@/components/nadi/module-empty-state';
 import { Money } from '@/components/nadi/money';
-import { PriceChart } from '@/components/nadi/price-chart';
+import {
+    type BenchmarkOverlayData,
+    type IndicatorSeriesData,
+    PriceChart,
+} from '@/components/nadi/price-chart';
+import { Sparkline } from '@/components/nadi/sparkline';
 import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/app-layout';
-import { formatCompact, formatPct, formatPrice } from '@/lib/format';
+import { formatCompact, formatDate, formatNumber, formatPct, formatPrice } from '@/lib/format';
 import { useT } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { type BreadcrumbItem, type MarketClockStatus, type OhlcvBar } from '@/types';
 import { Head, router } from '@inertiajs/react';
-import { Star } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Info, MinusCircle, Star } from 'lucide-react';
 
 interface StockShowProps {
     instrument: {
@@ -57,10 +64,107 @@ interface StockShowProps {
         return_1y: string | null;
     };
     bars: OhlcvBar[];
+    indicatorSeries?: IndicatorSeriesData;
+    benchmarkOverlay?: BenchmarkOverlayData | null;
+    fundamentals: {
+        as_of_date: string;
+        period_label: string;
+        statement_currency: string;
+        market_cap: string | null;
+        market_cap_idr: string | null;
+        eps: string | null;
+        per: string | null;
+        pbv: string | null;
+        roe: string | null;
+        roa: string | null;
+        der: string | null;
+        current_ratio: string | null;
+        net_margin: string | null;
+        revenue_growth_yoy: string | null;
+        earnings_growth_yoy: string | null;
+        ocf: string | null;
+        fcf: string | null;
+        dividend_yield: string | null;
+        dividend_payout_ratio: string | null;
+        is_financial_sector: boolean;
+        missing_fields: string[];
+        is_demo: boolean;
+        source: string;
+    } | null;
+    statements: Array<{
+        period_label: string;
+        period_end_date: string;
+        published_at: string;
+        currency: string;
+        revenue: string | null;
+        net_income: string | null;
+        total_assets: string | null;
+        total_equity: string | null;
+        operating_cash_flow: string | null;
+        free_cash_flow: string | null;
+        is_demo: boolean;
+    }>;
+    technicals: {
+        trade_date: string;
+        sma_20: string | null;
+        sma_50: string | null;
+        sma_200: string | null;
+        ema_20: string | null;
+        rsi_14: string | null;
+        macd_line: string | null;
+        macd_signal: string | null;
+        macd_hist: string | null;
+        atr_14: string | null;
+        obv: number | null;
+        volatility_20d: string | null;
+        relative_strength_1m: string | null;
+    } | null;
+    score: {
+        as_of_date: string;
+        overall_score: string;
+        fundamentals_score: string | null;
+        valuation_score: string | null;
+        technical_score: string | null;
+        risk_score: string | null;
+        catalysts_score: string | null;
+        sector_percentile: string | null;
+        data_coverage: string;
+        reasons: Array<{ type: 'positive' | 'negative' | 'neutral'; label: string; detail: string }>;
+        missing_indicators: string[];
+        weights_used: Record<string, number>;
+        calculation_version: string;
+        is_demo: boolean;
+    } | null;
+    scoreHistory: Array<{ date: string; overall_score: string }>;
+    corporateActions: Array<{
+        id: number;
+        action_type: string;
+        ex_date: string;
+        payment_date: string | null;
+        declared_currency: string | null;
+        cash_amount: string | null;
+        ratio_numerator: string | null;
+        ratio_denominator: string | null;
+        notes: string | null;
+        is_demo: boolean;
+    }>;
     inWatchlist: boolean;
 }
 
-export default function StockShow({ instrument, stats, bars, inWatchlist }: StockShowProps) {
+export default function StockShow({
+    instrument,
+    stats,
+    bars,
+    indicatorSeries,
+    benchmarkOverlay,
+    fundamentals,
+    statements,
+    technicals,
+    score,
+    scoreHistory,
+    corporateActions,
+    inWatchlist,
+}: StockShowProps) {
     const { t, locale } = useT();
 
     const breadcrumbs: BreadcrumbItem[] = [
@@ -89,6 +193,10 @@ export default function StockShow({ instrument, stats, bars, inWatchlist }: Stoc
             <div className="bg-card border-border rounded-md border p-4">
                 <h2 className="mb-3 text-xs font-semibold tracking-wider uppercase">{t('stocks.detail.stats')}</h2>
                 <dl className="divide-border divide-y text-xs">
+                    <div className="flex justify-between py-2">
+                        <dt className="text-muted-foreground">Market Cap</dt>
+                        <dd className="num font-medium">{formatCompact(fundamentals?.market_cap, locale)}</dd>
+                    </div>
                     <div className="flex justify-between py-2">
                         <dt className="text-muted-foreground">{t('stocks.detail.open')}</dt>
                         <dd className="num font-medium">{formatPrice(instrument.quote?.open, instrument.currency, locale)}</dd>
@@ -170,6 +278,16 @@ export default function StockShow({ instrument, stats, bars, inWatchlist }: Stoc
         </div>
     );
 
+    const scoreComponents = score
+        ? [
+              { key: 'fundamentals', val: score.fundamentals_score, weight: score.weights_used?.fundamentals ?? 30 },
+              { key: 'valuation', val: score.valuation_score, weight: score.weights_used?.valuation ?? 25 },
+              { key: 'technical', val: score.technical_score, weight: score.weights_used?.technical ?? 20 },
+              { key: 'risk', val: score.risk_score, weight: score.weights_used?.risk ?? 15 },
+              { key: 'catalysts', val: score.catalysts_score, weight: score.weights_used?.catalysts ?? 10 },
+          ]
+        : [];
+
     return (
         <AppLayout breadcrumbs={breadcrumbs} aside={asidePanel}>
             <Head title={`${instrument.symbol} (${instrument.exchange.code}) — ${instrument.name}`} />
@@ -186,11 +304,7 @@ export default function StockShow({ instrument, stats, bars, inWatchlist }: Stoc
                         </div>
                         <p className="text-muted-foreground text-sm">{instrument.name}</p>
                         {instrument.quote && (
-                            <DataFreshness
-                                asOf={instrument.quote.as_of}
-                                source={instrument.quote.source}
-                                isDemo={instrument.quote.is_demo}
-                            />
+                            <DataFreshness asOf={instrument.quote.as_of} source={instrument.quote.source} isDemo={instrument.quote.is_demo} />
                         )}
                     </div>
 
@@ -218,7 +332,13 @@ export default function StockShow({ instrument, stats, bars, inWatchlist }: Stoc
                     </div>
                 </div>
 
-                <PriceChart bars={bars} height={380} />
+                <PriceChart
+                    bars={bars}
+                    indicatorSeries={indicatorSeries}
+                    corporateActions={corporateActions}
+                    benchmarkOverlay={benchmarkOverlay}
+                    height={390}
+                />
 
                 <div className="bg-card border-border grid grid-cols-5 gap-2 rounded-md border p-3">
                     {returnStrip.map((item) => (
@@ -240,9 +360,321 @@ export default function StockShow({ instrument, stats, bars, inWatchlist }: Stoc
                     ))}
                 </div>
 
+                {/* NADI Stock Score */}
+                <section className="bg-card border-border rounded-md border p-4 space-y-4">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                            <div className="flex items-center gap-2">
+                                <h2 className="text-sm font-semibold">{t('stocks.score.title')}</h2>
+                                {score?.is_demo && <DemoBadge />}
+                                {score && (
+                                    <span className="bg-muted text-muted-foreground rounded px-1.5 py-0.5 font-mono text-[10px]">
+                                        {score.calculation_version}
+                                    </span>
+                                )}
+                            </div>
+                            <p className="text-muted-foreground mt-0.5 text-xs">{t('stocks.score.disclaimer')}</p>
+                        </div>
+
+                        {score && (
+                            <div className="flex items-center gap-4">
+                                {scoreHistory.length > 1 && (
+                                    <Sparkline values={scoreHistory.map((h) => h.overall_score)} positive width={84} height={28} />
+                                )}
+                                <div className="border-border bg-muted/40 rounded-md border px-3 py-1.5 text-right">
+                                    <div className="num text-xl font-bold">{formatNumber(score.overall_score, locale, 1, 1)}</div>
+                                    <div className="text-muted-foreground text-[10px]">/ 100</div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {!score ? (
+                        <EmptyState title={t('app.insufficient_data')} />
+                    ) : (
+                        <>
+                            <div className="grid gap-3 md:grid-cols-2">
+                                <div className="space-y-2.5">
+                                    {scoreComponents.map((c) => {
+                                        const val = c.val !== null ? Number(c.val) : null;
+                                        return (
+                                            <div key={c.key} className="space-y-1">
+                                                <div className="flex items-center justify-between text-xs">
+                                                    <span>
+                                                        {t(`stocks.score.comp.${c.key}`)}{' '}
+                                                        <span className="text-muted-foreground">({c.weight}%)</span>
+                                                    </span>
+                                                    <span className="num font-semibold">{val !== null ? formatNumber(val, locale, 1, 1) : '—'}</span>
+                                                </div>
+                                                <div className="bg-muted h-2 w-full overflow-hidden rounded">
+                                                    <div
+                                                        className="bg-primary h-full rounded transition-all"
+                                                        style={{ width: `${val !== null ? Math.min(100, Math.max(0, val)) : 0}%` }}
+                                                    />
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                    <div className="text-muted-foreground flex flex-wrap gap-4 pt-1 text-[11px]">
+                                        <span>
+                                            {t('stocks.score.coverage')}: <strong className="num">{score.data_coverage}%</strong>
+                                        </span>
+                                        {score.sector_percentile && (
+                                            <span>
+                                                {t('stocks.score.sector_pct')}: <strong className="num">{score.sector_percentile}%</strong>
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <h3 className="text-muted-foreground text-xs font-semibold">{t('stocks.score.reasons')}</h3>
+                                    <ul className="space-y-1.5 text-xs">
+                                        {score.reasons.map((r, i) => (
+                                            <li key={i} className="flex items-start gap-2">
+                                                {r.type === 'positive' ? (
+                                                    <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--nadi-gain-ink)]" />
+                                                ) : r.type === 'negative' ? (
+                                                    <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--nadi-loss-ink)]" />
+                                                ) : (
+                                                    <MinusCircle className="text-muted-foreground mt-0.5 h-3.5 w-3.5 shrink-0" />
+                                                )}
+                                                <span>
+                                                    <strong className="font-medium">{r.label}</strong>{' '}
+                                                    <span className="text-muted-foreground num">({r.detail})</span>
+                                                </span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                    {score.missing_indicators.length > 0 && (
+                                        <p className="text-muted-foreground text-[11px]">
+                                            {t('stocks.score.missing')}: {score.missing_indicators.join(', ')}
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+                        </>
+                    )}
+                </section>
+
+                {/* Fundamentals & Technicals Grid */}
+                <div className="grid gap-4 lg:grid-cols-2">
+                    <section className="bg-card border-border rounded-md border p-4 space-y-3">
+                        <div className="flex items-center justify-between gap-2">
+                            <h2 className="text-sm font-semibold">{t('stocks.fundamentals.title')}</h2>
+                            {fundamentals && (
+                                <span className="text-muted-foreground text-xs">{fundamentals.period_label}</span>
+                            )}
+                        </div>
+
+                        {!fundamentals ? (
+                            <EmptyState title={t('app.insufficient_data')} />
+                        ) : (
+                            <>
+                                {fundamentals.is_financial_sector && (
+                                    <div className="border-border bg-muted/40 text-muted-foreground flex items-start gap-2 rounded border p-2 text-[11px]">
+                                        <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                                        <span>{t('stocks.fundamentals.financial_note')}</span>
+                                    </div>
+                                )}
+                                {fundamentals.statement_currency !== instrument.currency && (
+                                    <div className="border-border bg-[var(--nadi-ice-bg)] text-[var(--nadi-ice-ink)] flex items-start gap-2 rounded border p-2 text-[11px]">
+                                        <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                                        <span>
+                                            {t('stocks.fundamentals.cross_ccy_note', {
+                                                stmt_ccy: fundamentals.statement_currency,
+                                                inst_ccy: instrument.currency,
+                                            })}
+                                        </span>
+                                    </div>
+                                )}
+
+                                <dl className="divide-border grid grid-cols-2 gap-x-4 divide-y text-xs">
+                                    <div className="flex justify-between py-2">
+                                        <dt className="text-muted-foreground">EPS ({instrument.currency})</dt>
+                                        <dd className="num font-medium">{formatPrice(fundamentals.eps, instrument.currency, locale)}</dd>
+                                    </div>
+                                    <div className="flex justify-between py-2">
+                                        <dt className="text-muted-foreground">PER</dt>
+                                        <dd className="num font-medium">{fundamentals.per ? `${formatNumber(fundamentals.per, locale, 2, 2)}x` : '—'}</dd>
+                                    </div>
+                                    <div className="flex justify-between py-2">
+                                        <dt className="text-muted-foreground">PBV</dt>
+                                        <dd className="num font-medium">{fundamentals.pbv ? `${formatNumber(fundamentals.pbv, locale, 2, 2)}x` : '—'}</dd>
+                                    </div>
+                                    <div className="flex justify-between py-2">
+                                        <dt className="text-muted-foreground">ROE</dt>
+                                        <dd className="num font-medium">{formatPct(fundamentals.roe, locale, false)}</dd>
+                                    </div>
+                                    <div className="flex justify-between py-2">
+                                        <dt className="text-muted-foreground">ROA</dt>
+                                        <dd className="num font-medium">{formatPct(fundamentals.roa, locale, false)}</dd>
+                                    </div>
+                                    <div className="flex justify-between py-2">
+                                        <dt className="text-muted-foreground">Net Margin</dt>
+                                        <dd className="num font-medium">{formatPct(fundamentals.net_margin, locale, false)}</dd>
+                                    </div>
+                                    <div className="flex justify-between py-2">
+                                        <dt className="text-muted-foreground">DER</dt>
+                                        <dd className="num font-medium">{fundamentals.der ? `${formatNumber(fundamentals.der, locale, 2, 2)}x` : '—'}</dd>
+                                    </div>
+                                    <div className="flex justify-between py-2">
+                                        <dt className="text-muted-foreground">Current Ratio</dt>
+                                        <dd className="num font-medium">
+                                            {fundamentals.current_ratio ? `${formatNumber(fundamentals.current_ratio, locale, 2, 2)}x` : '—'}
+                                        </dd>
+                                    </div>
+                                    <div className="flex justify-between py-2">
+                                        <dt className="text-muted-foreground">Rev Growth YoY</dt>
+                                        <dd className="num font-medium">{formatPct(fundamentals.revenue_growth_yoy, locale)}</dd>
+                                    </div>
+                                    <div className="flex justify-between py-2">
+                                        <dt className="text-muted-foreground">Earn Growth YoY</dt>
+                                        <dd className="num font-medium">{formatPct(fundamentals.earnings_growth_yoy, locale)}</dd>
+                                    </div>
+                                    <div className="flex justify-between py-2">
+                                        <dt className="text-muted-foreground">Div Yield</dt>
+                                        <dd className="num font-medium">{formatPct(fundamentals.dividend_yield, locale, false)}</dd>
+                                    </div>
+                                    <div className="flex justify-between py-2">
+                                        <dt className="text-muted-foreground">Payout Ratio</dt>
+                                        <dd className="num font-medium">{formatPct(fundamentals.dividend_payout_ratio, locale, false)}</dd>
+                                    </div>
+                                </dl>
+                            </>
+                        )}
+                    </section>
+
+                    <section className="bg-card border-border rounded-md border p-4 space-y-3">
+                        <div className="flex items-center justify-between gap-2">
+                            <h2 className="text-sm font-semibold">{t('stocks.technicals.title')}</h2>
+                            {technicals && <span className="text-muted-foreground num text-xs">{formatDate(technicals.trade_date, locale)}</span>}
+                        </div>
+
+                        {!technicals ? (
+                            <EmptyState title={t('app.insufficient_data')} />
+                        ) : (
+                            <dl className="divide-border grid grid-cols-2 gap-x-4 divide-y text-xs">
+                                <div className="flex justify-between py-2">
+                                    <dt className="text-muted-foreground">SMA 20</dt>
+                                    <dd className="num font-medium">{formatPrice(technicals.sma_20, instrument.currency, locale)}</dd>
+                                </div>
+                                <div className="flex justify-between py-2">
+                                    <dt className="text-muted-foreground">SMA 50</dt>
+                                    <dd className="num font-medium">{formatPrice(technicals.sma_50, instrument.currency, locale)}</dd>
+                                </div>
+                                <div className="flex justify-between py-2">
+                                    <dt className="text-muted-foreground">SMA 200</dt>
+                                    <dd className="num font-medium">{formatPrice(technicals.sma_200, instrument.currency, locale)}</dd>
+                                </div>
+                                <div className="flex justify-between py-2">
+                                    <dt className="text-muted-foreground">EMA 20</dt>
+                                    <dd className="num font-medium">{formatPrice(technicals.ema_20, instrument.currency, locale)}</dd>
+                                </div>
+                                <div className="flex justify-between py-2">
+                                    <dt className="text-muted-foreground">RSI (14)</dt>
+                                    <dd className="num font-medium">{formatNumber(technicals.rsi_14, locale, 2, 2)}</dd>
+                                </div>
+                                <div className="flex justify-between py-2">
+                                    <dt className="text-muted-foreground">ATR (14)</dt>
+                                    <dd className="num font-medium">{formatPrice(technicals.atr_14, instrument.currency, locale)}</dd>
+                                </div>
+                                <div className="flex justify-between py-2">
+                                    <dt className="text-muted-foreground">MACD Line</dt>
+                                    <dd className="num font-medium">{formatNumber(technicals.macd_line, locale, 2, 2)}</dd>
+                                </div>
+                                <div className="flex justify-between py-2">
+                                    <dt className="text-muted-foreground">MACD Signal</dt>
+                                    <dd className="num font-medium">{formatNumber(technicals.macd_signal, locale, 2, 2)}</dd>
+                                </div>
+                                <div className="flex justify-between py-2">
+                                    <dt className="text-muted-foreground">Volatilitas 20H (Ann.)</dt>
+                                    <dd className="num font-medium">{formatPct(technicals.volatility_20d, locale, false)}</dd>
+                                </div>
+                                <div className="flex justify-between py-2">
+                                    <dt className="text-muted-foreground">Rel. Strength 1B</dt>
+                                    <dd className="num font-medium">{formatPct(technicals.relative_strength_1m, locale)}</dd>
+                                </div>
+                            </dl>
+                        )}
+                    </section>
+                </div>
+
+                {/* Statements & Corporate Actions */}
+                <div className="grid gap-4 lg:grid-cols-2">
+                    <section className="bg-card border-border rounded-md border p-4 space-y-3">
+                        <h2 className="text-sm font-semibold">{t('stocks.statements.title')}</h2>
+                        {statements.length === 0 ? (
+                            <EmptyState title={t('app.insufficient_data')} />
+                        ) : (
+                            <div className="overflow-x-auto">
+                                <table className="w-full border-collapse text-xs">
+                                    <thead>
+                                        <tr className="border-border border-b text-left">
+                                            <th className="py-1.5 font-semibold">Periode</th>
+                                            <th className="py-1.5 text-right font-semibold">Revenue</th>
+                                            <th className="py-1.5 text-right font-semibold">Net Income</th>
+                                            <th className="py-1.5 text-right font-semibold">Equity</th>
+                                            <th className="py-1.5 text-right font-semibold">OCF</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-border divide-y">
+                                        {statements.map((s) => (
+                                            <tr key={s.period_label}>
+                                                <td className="py-2 font-medium">
+                                                    {s.period_label} <span className="text-muted-foreground">({s.currency})</span>
+                                                </td>
+                                                <td className="num py-2 text-right">{formatCompact(s.revenue, locale)}</td>
+                                                <td className="num py-2 text-right">{formatCompact(s.net_income, locale)}</td>
+                                                <td className="num py-2 text-right">{formatCompact(s.total_equity, locale)}</td>
+                                                <td className="num py-2 text-right">{formatCompact(s.operating_cash_flow, locale)}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </section>
+
+                    <section className="bg-card border-border rounded-md border p-4 space-y-3">
+                        <h2 className="text-sm font-semibold">{t('stocks.actions.title')}</h2>
+                        {corporateActions.length === 0 ? (
+                            <EmptyState title={t('stocks.actions.empty')} />
+                        ) : (
+                            <div className="overflow-x-auto">
+                                <table className="w-full border-collapse text-xs">
+                                    <thead>
+                                        <tr className="border-border border-b text-left">
+                                            <th className="py-1.5 font-semibold">Ex-Date</th>
+                                            <th className="py-1.5 font-semibold">Tipe</th>
+                                            <th className="py-1.5 text-right font-semibold">Nilai / Rasio</th>
+                                            <th className="py-1.5 font-semibold">Catatan</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-border divide-y">
+                                        {corporateActions.map((a) => (
+                                            <tr key={a.id}>
+                                                <td className="num py-2">{formatDate(a.ex_date, locale)}</td>
+                                                <td className="py-2 font-mono text-[11px]">{a.action_type}</td>
+                                                <td className="num py-2 text-right">
+                                                    {a.cash_amount
+                                                        ? `${a.declared_currency ?? instrument.currency} ${formatPrice(a.cash_amount, a.declared_currency ?? instrument.currency, locale)}`
+                                                        : a.ratio_numerator && a.ratio_denominator
+                                                          ? `${Number(a.ratio_numerator)}:${Number(a.ratio_denominator)}`
+                                                          : '—'}
+                                                </td>
+                                                <td className="text-muted-foreground py-2">{a.notes ?? '—'}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </section>
+                </div>
+
+                {/* Future Phases */}
                 <div className="grid gap-4 md:grid-cols-2">
-                    <ModuleEmptyState title={t('stocks.section.fundamentals')} description={t('planned.screener.desc')} phase={2} slug="screener" />
-                    <ModuleEmptyState title={t('stocks.section.score')} description={t('planned.opportunities.desc')} phase={2} />
                     <ModuleEmptyState title={t('stocks.section.safety')} description={t('planned.stock_safety.desc')} phase={3} slug="stock-safety" />
                     <ModuleEmptyState title={t('stocks.section.entry_exit')} description={t('planned.entry_exit.desc')} phase={3} slug="entry-exit" />
                     <ModuleEmptyState title={t('stocks.section.news')} description={t('planned.newsroom.desc')} phase={8} slug="newsroom" />
