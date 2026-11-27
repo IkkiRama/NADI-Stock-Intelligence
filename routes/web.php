@@ -5,15 +5,20 @@ use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\DataImportController;
 use App\Http\Controllers\Admin\DataSourceController;
 use App\Http\Controllers\Admin\FeatureFlagController;
+use App\Http\Controllers\Admin\SafetyRuleController;
 use App\Http\Controllers\Admin\ScoringConfigController;
 use App\Http\Controllers\Admin\UserManagementController;
+use App\Http\Controllers\AlertsCalendarController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\EntryExitController;
 use App\Http\Controllers\HeatmapController;
 use App\Http\Controllers\MarketController;
+use App\Http\Controllers\OpportunitiesController;
 use App\Http\Controllers\PlannedModuleController;
 use App\Http\Controllers\ScreenerController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\StockController;
+use App\Http\Controllers\StockSafetyController;
 use App\Http\Controllers\WatchlistController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -37,6 +42,17 @@ Route::middleware(['auth'])->group(function () {
     Route::get('screener/export', [ScreenerController::class, 'export'])->name('screener.export');
     Route::post('screener/presets', [ScreenerController::class, 'storePreset'])->name('screener.presets.store');
     Route::delete('screener/presets/{savedScreener}', [ScreenerController::class, 'destroyPreset'])->name('screener.presets.destroy');
+
+    Route::get('opportunities', [OpportunitiesController::class, 'index'])->name('opportunities.index');
+    Route::get('stock-safety', [StockSafetyController::class, 'index'])->name('stock-safety.index');
+    Route::get('entry-exit', [EntryExitController::class, 'index'])->name('entry-exit.index');
+    Route::post('entry-exit/position-size', [EntryExitController::class, 'calculatePositionSize'])->name('entry-exit.position-size');
+
+    Route::get('alerts-calendar', [AlertsCalendarController::class, 'index'])->name('alerts-calendar.index');
+    Route::post('alerts', [AlertsCalendarController::class, 'store'])->name('alerts.store');
+    Route::patch('alerts/{userAlert}/toggle', [AlertsCalendarController::class, 'toggle'])->name('alerts.toggle');
+    Route::delete('alerts/{userAlert}', [AlertsCalendarController::class, 'destroy'])->name('alerts.destroy');
+    Route::post('alerts/events/{alertEvent}/read', [AlertsCalendarController::class, 'markEventRead'])->name('alerts.events.read');
 
     Route::get('search', SearchController::class)->middleware('throttle:60,1')->name('search');
 
@@ -81,6 +97,16 @@ Route::middleware(['auth'])->group(function () {
             Route::patch('scoring', [ScoringConfigController::class, 'update'])
                 ->middleware('can:manage-scoring')
                 ->name('scoring.update');
+
+            Route::get('safety-rules', [SafetyRuleController::class, 'edit'])
+                ->middleware('can:manage-safety')
+                ->name('safety-rules.edit');
+            Route::patch('safety-rules', [SafetyRuleController::class, 'update'])
+                ->middleware('can:manage-safety')
+                ->name('safety-rules.update');
+            Route::patch('safety-rules/instruments/{instrument}', [SafetyRuleController::class, 'updateInstrument'])
+                ->middleware('can:manage-safety')
+                ->name('safety-rules.instrument');
 
             Route::get('feature-flags', [FeatureFlagController::class, 'index'])
                 ->middleware('can:manage-feature-flags')

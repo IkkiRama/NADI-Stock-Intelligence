@@ -10,15 +10,19 @@ import {
     type IndicatorSeriesData,
     PriceChart,
 } from '@/components/nadi/price-chart';
+import { PositionSizerCard } from '@/components/nadi/position-sizer-card';
+import { SafetyBadge } from '@/components/nadi/safety-badge';
 import { Sparkline } from '@/components/nadi/sparkline';
+import { type SignalPlan } from '@/pages/intelligence/entry-exit';
 import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/app-layout';
 import { formatCompact, formatDate, formatNumber, formatPct, formatPrice } from '@/lib/format';
 import { useT } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { type BreadcrumbItem, type MarketClockStatus, type OhlcvBar } from '@/types';
-import { Head, router } from '@inertiajs/react';
-import { AlertCircle, CheckCircle2, Info, MinusCircle, Star } from 'lucide-react';
+import { Head, Link, router } from '@inertiajs/react';
+import { AlertCircle, CheckCircle2, Info, MinusCircle, ShieldAlert, Star, Target, XCircle } from 'lucide-react';
+import { useState } from 'react';
 
 interface StockShowProps {
     instrument: {
@@ -148,6 +152,43 @@ interface StockShowProps {
         notes: string | null;
         is_demo: boolean;
     }>;
+    safety: {
+        as_of_date: string;
+        risk_score: string | null;
+        risk_category: string;
+        safeguard_triggered: boolean;
+        triggered_rules: Array<{ code: string; severity: string; points: number; title: string; evidence: string }>;
+        data_confidence: string;
+        missing_factors: string[];
+        calculation_version: string;
+        is_demo: boolean;
+        regulatory: {
+            is_suspended: boolean;
+            has_exchange_warning: boolean;
+            has_special_monitoring: boolean;
+            free_float_pct: string | null;
+            top_holder_pct: string | null;
+            status_notes: string | null;
+            source_note: string | null;
+        } | null;
+    } | null;
+    safetyHistory: Array<{ date: string; risk_score: string | null; risk_category: string }>;
+    signalsByHorizon: Record<string, SignalPlan | null>;
+    signalHistory: Array<{
+        id: number;
+        signal_date: string;
+        stance: string;
+        entry_low: string | null;
+        stop_loss: string | null;
+        target_1: string | null;
+        net_rr: string | null;
+        safeguard_suppressed: boolean;
+    }>;
+    tradingCosts: {
+        buy_fee_pct: string;
+        sell_fee_pct: string;
+        slippage_pct: string;
+    };
     inWatchlist: boolean;
 }
 
@@ -163,9 +204,16 @@ export default function StockShow({
     score,
     scoreHistory,
     corporateActions,
+    safety,
+    safetyHistory,
+    signalsByHorizon,
+    signalHistory,
+    tradingCosts,
     inWatchlist,
 }: StockShowProps) {
     const { t, locale } = useT();
+    const [signalHorizon, setSignalHorizon] = useState<'short_term' | 'swing' | 'long_term'>('swing');
+    const activeSignal = signalsByHorizon?.[signalHorizon] ?? null;
 
     const breadcrumbs: BreadcrumbItem[] = [
         { title: t('nav.stock_explorer'), href: '/stocks' },
@@ -337,6 +385,24 @@ export default function StockShow({
                     indicatorSeries={indicatorSeries}
                     corporateActions={corporateActions}
                     benchmarkOverlay={benchmarkOverlay}
+                    priceLevels={
+                        activeSignal
+                            ? {
+                                  support: activeSignal.support_level ? Number(activeSignal.support_level) : null,
+                                  resistance: activeSignal.resistance_level ? Number(activeSignal.resistance_level) : null,
+                                  entryLow: activeSignal.entry_low ? Number(activeSignal.entry_low) : null,
+                                  entryHigh: activeSignal.entry_high ? Number(activeSignal.entry_high) : null,
+                                  stopLoss: activeSignal.stop_loss ? Number(activeSignal.stop_loss) : null,
+                                  target1: activeSignal.target_1 ? Number(activeSignal.target_1) : null,
+                                  target2: activeSignal.target_2 ? Number(activeSignal.target_2) : null,
+                              }
+                            : null
+                    }
+                    signalMarkers={signalHistory.map((h) => ({
+                        date: h.signal_date,
+                        stance: h.stance,
+                        label: h.stance === 'actionable_setup' ? 'BUY?' : h.stance === 'suppressed_by_safety' ? 'SAFE!' : 'SIG',
+                    }))}
                     height={390}
                 />
 
@@ -673,10 +739,189 @@ export default function StockShow({
                     </section>
                 </div>
 
+                {/* Phase 3: NADI Stock Safety Assessment */}
+                <section className="bg-card border-border rounded-md border p-4 space-y-4">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                            <div className="flex flex-wrap items-center gap-2">
+                                <ShieldAlert className="text-muted-foreground h-4 w-4" />
+                                <h2 className="text-sm font-semibold">{t('stocks.section.safety')}</h2>
+                                {safety && (
+                                    <SafetyBadge
+                                        category={safety.risk_category}
+                                        score={safety.risk_score}
+                                        safeguard={safety.safeguard_triggered}
+                                    />
+                                )}
+                                {safety?.is_demo && <DemoBadge />}
+                            </div>
+                            <p className="text-muted-foreground mt-0.5 text-xs">{t('safety.disclaimer')}</p>
+                        </div>
+
+                        {safety && (
+                            <div className="flex items-center gap-3">
+                                {safetyHistory.length > 1 && (
+                                    <Sparkline
+                                        values={safetyHistory.filter((h) => h.risk_score !== null).map((h) => String(h.risk_score))}
+                                        positive={false}
+                                        width={80}
+                                        height={26}
+                                    />
+                                )}
+                                <div className="text-right text-xs">
+                                    <div className="text-muted-foreground text-[11px]">{t('safety.confidence')}</div>
+                                    <div className="num font-semibold">{formatNumber(safety.data_confidence, locale, 0, 0)}%</div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {!safety ? (
+                        <EmptyState title={t('app.insufficient_data')} />
+                    ) : (
+                        <div className="grid gap-4 md:grid-cols-2 text-xs">
+                            <div className="space-y-2">
+                                <h3 className="text-muted-foreground font-semibold">{t('safety.triggered_rules')}</h3>
+                                {safety.triggered_rules.length === 0 ? (
+                                    <p className="text-[var(--nadi-gain-ink)] font-medium">{t('safety.no_rules')}</p>
+                                ) : (
+                                    <ul className="space-y-1.5">
+                                        {safety.triggered_rules.map((r) => (
+                                            <li key={r.code} className="border-border rounded border p-2">
+                                                <div className="font-semibold">
+                                                    {r.title}{' '}
+                                                    <span className="text-muted-foreground num font-normal">(+{r.points} pts)</span>
+                                                </div>
+                                                <p className="text-muted-foreground mt-0.5 text-[11px]">{r.evidence}</p>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                )}
+                            </div>
+                            <div className="space-y-2">
+                                <h3 className="text-muted-foreground font-semibold">{t('safety.missing_factors')}</h3>
+                                <p className="text-muted-foreground">{safety.missing_factors.join(', ') || '—'}</p>
+                                {safety.regulatory?.status_notes && (
+                                    <div className="border-[var(--nadi-loss-ink)]/30 bg-[var(--nadi-loss-bg)] text-[var(--nadi-loss-ink)] rounded border p-2">
+                                        {safety.regulatory.status_notes}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                </section>
+
+                {/* Phase 3: Smart Entry & Exit Plan + Position Sizing */}
+                <section className="bg-card border-border rounded-md border p-4 space-y-4">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                            <Target className="text-muted-foreground h-4 w-4" />
+                            <h2 className="text-sm font-semibold">{t('stocks.section.entry_exit')}</h2>
+                            {activeSignal && (
+                                <span
+                                    className={cn(
+                                        'rounded px-1.5 py-0.5 text-[11px] font-semibold',
+                                        activeSignal.stance === 'actionable_setup'
+                                            ? 'bg-[var(--nadi-gain-bg)] text-[var(--nadi-gain-ink)]'
+                                            : activeSignal.stance === 'suppressed_by_safety'
+                                              ? 'bg-[var(--nadi-loss-bg)] text-[var(--nadi-loss-ink)]'
+                                              : 'bg-muted text-muted-foreground',
+                                    )}
+                                >
+                                    {t(`signals.stance.${activeSignal.stance}`)}
+                                </span>
+                            )}
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1 rounded-md border p-0.5">
+                                {(['short_term', 'swing', 'long_term'] as const).map((h) => (
+                                    <Button
+                                        key={h}
+                                        type="button"
+                                        size="sm"
+                                        variant={signalHorizon === h ? 'default' : 'ghost'}
+                                        className="h-6 px-2 text-[11px]"
+                                        onClick={() => setSignalHorizon(h)}
+                                    >
+                                        {t(`signals.horizon.${h}`)}
+                                    </Button>
+                                ))}
+                            </div>
+                            <Link
+                                href={`/entry-exit?exchange=${instrument.exchange.code}&symbol=${instrument.symbol}&horizon=${signalHorizon}`}
+                                className="text-muted-foreground hover:text-foreground text-xs underline-offset-4 hover:underline"
+                            >
+                                {t('app.view_all')}
+                            </Link>
+                        </div>
+                    </div>
+
+                    {!activeSignal ? (
+                        <EmptyState title={t('app.insufficient_data')} />
+                    ) : (
+                        <>
+                            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 text-xs">
+                                <div className="border-border rounded border p-2.5">
+                                    <span className="text-muted-foreground block text-[11px]">{t('signals.entry_zone')}</span>
+                                    <span className="num font-semibold">
+                                        {activeSignal.entry_low && activeSignal.entry_high
+                                            ? `${formatPrice(activeSignal.entry_low, instrument.currency, locale)} – ${formatPrice(activeSignal.entry_high, instrument.currency, locale)}`
+                                            : '—'}
+                                    </span>
+                                </div>
+                                <div className="border-border rounded border p-2.5">
+                                    <span className="text-muted-foreground block text-[11px]">{t('signals.stop_loss')}</span>
+                                    <span className="num text-[var(--nadi-loss-ink)] font-semibold">
+                                        {formatPrice(activeSignal.stop_loss, instrument.currency, locale)}
+                                    </span>
+                                </div>
+                                <div className="border-border rounded border p-2.5">
+                                    <span className="text-muted-foreground block text-[11px]">
+                                        {t('signals.target_1')} / {t('signals.target_2')}
+                                    </span>
+                                    <span className="num text-[var(--nadi-gain-ink)] font-semibold">
+                                        {formatPrice(activeSignal.target_1, instrument.currency, locale)} /{' '}
+                                        {formatPrice(activeSignal.target_2, instrument.currency, locale)}
+                                    </span>
+                                </div>
+                                <div className="border-border rounded border p-2.5">
+                                    <span className="text-muted-foreground block text-[11px]">{t('signals.net_rr')}</span>
+                                    <span className="num font-semibold">
+                                        {activeSignal.net_rr ? `${formatNumber(activeSignal.net_rr, locale, 2, 2)}x` : '—'}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <ul className="space-y-1 text-xs">
+                                {activeSignal.rationale.map((r, i) => (
+                                    <li key={i} className="flex items-start gap-2">
+                                        {r.status === 'pass' ? (
+                                            <CheckCircle2 className="text-[var(--nadi-gain-ink)] mt-0.5 h-3.5 w-3.5 shrink-0" />
+                                        ) : r.status === 'fail' || r.status === 'warning' ? (
+                                            <XCircle className="text-[var(--nadi-loss-ink)] mt-0.5 h-3.5 w-3.5 shrink-0" />
+                                        ) : (
+                                            <Info className="text-muted-foreground mt-0.5 h-3.5 w-3.5 shrink-0" />
+                                        )}
+                                        <span>{r.text}</span>
+                                    </li>
+                                ))}
+                            </ul>
+
+                            <PositionSizerCard
+                                currency={instrument.currency}
+                                lotSize={instrument.lot_size}
+                                defaultEntry={activeSignal.entry_high ?? instrument.quote?.close}
+                                defaultStopLoss={activeSignal.stop_loss}
+                                defaultTarget={activeSignal.target_1}
+                                tradingCosts={tradingCosts}
+                            />
+                        </>
+                    )}
+                </section>
+
                 {/* Future Phases */}
                 <div className="grid gap-4 md:grid-cols-2">
-                    <ModuleEmptyState title={t('stocks.section.safety')} description={t('planned.stock_safety.desc')} phase={3} slug="stock-safety" />
-                    <ModuleEmptyState title={t('stocks.section.entry_exit')} description={t('planned.entry_exit.desc')} phase={3} slug="entry-exit" />
                     <ModuleEmptyState title={t('stocks.section.news')} description={t('planned.newsroom.desc')} phase={8} slug="newsroom" />
                     <ModuleEmptyState title={t('stocks.section.broker')} description={t('planned.broker_intelligence.desc')} phase={10} slug="broker-intelligence" />
                 </div>

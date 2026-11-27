@@ -30,3 +30,14 @@
 - Configurable weights summing to 100% (default: Fundamentals 30%, Valuation 25%, Technical 20%, Risk 15%, Catalysts 10%).
 - Missing components are excluded from the denominator while `data_coverage` transparently reports the percentage of total weight backed by available metrics.
 - A high NADI score reflects historical/current quantitative attributes only and is never an automatic BUY recommendation.
+
+## NADI Stock Safety (`StockSafetyService`)
+- Requires >= 25 daily price bars to compute a `0–100` statistical risk score (`insufficient_data` otherwise, unless regulatory suspension/special monitoring applies).
+- Evaluates 5D/20D unusual price deviations, volume spikes vs 20D baseline, annualized 20D volatility, FX-normalized IDR liquidity thickness, opening gaps, upper-wick/high-volume reversals, fundamental divergence, and issuer regulatory status flags (`is_suspended`, `has_special_monitoring`, `has_exchange_warning`, low free float, concentrated ownership).
+- Triggers safeguards when `risk_score >= safeguard_score` (default 65) or regulatory suspension/special monitoring is active. Findings are strictly statistical/structural observations and never assert definitive price manipulation.
+
+## Smart Entry & Exit and Position Sizing (`SmartEntryExitService`, `PositionSizingCalculator`)
+- Evaluates `short_term`, `swing`, and `long_term` plans from OHLCV structure, SMA/EMA trends, RSI(14), ATR(14), and NADI score.
+- Every price level (`support`, `resistance`, `entry_low`, `entry_high`, `confirmation_price`, `stop_loss`, `invalidation_price`, `target_1`, `target_2`) is rounded to valid exchange price fractions via `TickSize::roundToTick`.
+- **No Forced BUY & Safeguard Suppression**: Emits `suppressed_by_safety` whenever `safeguard_triggered = true`, and emits `no_setup` whenever trend/RSI criteria or post-cost `net_rr >= 1.50` fail.
+- **Lot-Aware Position Sizing**: Uses exact `Dec` (`RoundingMode::DOWN`) after brokerage buy/sell fees and slippage assumptions (`config/nadi.php` `trading_costs`), rounding down to whole exchange lot multiples and capping by available allocated capital.

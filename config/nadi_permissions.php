@@ -9,6 +9,7 @@ return [
         'view-audit-logs',
         'manage-imports',
         'manage-scoring',
+        'manage-safety',
     ],
 
     'roles' => [
@@ -20,6 +21,7 @@ return [
             'view-audit-logs',
             'manage-imports',
             'manage-scoring',
+            'manage-safety',
         ],
         'editor' => [],
         'user' => [],

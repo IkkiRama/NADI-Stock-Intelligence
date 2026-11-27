@@ -28,6 +28,7 @@ class ScreenerController extends Controller
         'dividend_yield' => 'instrument_fundamentals_latest.dividend_yield',
         'rsi_14' => 'instrument_technicals_latest.rsi_14',
         'volume' => 'instrument_quotes_latest.volume',
+        'safety_risk' => 'stock_safety_assessments.risk_score',
     ];
 
     public function index(Request $request): Response
@@ -109,7 +110,7 @@ class ScreenerController extends Controller
             fputcsv($out, [
                 'Exchange', 'Symbol', 'Name', 'Sector', 'Currency', 'Price', 'ChangePct',
                 'Return1M', 'MarketCapIDR', 'PER', 'PBV', 'ROE', 'DividendYield',
-                'RSI14', 'Score', 'AsOf', 'IsDemo', 'ExportedAtUTC',
+                'RSI14', 'Score', 'SafetyRiskScore', 'SafetyCategory', 'SafeguardFlagged', 'AsOf', 'IsDemo', 'ExportedAtUTC',
             ]);
 
             $exportedAt = now('UTC')->toIso8601String();
@@ -130,6 +131,9 @@ class ScreenerController extends Controller
                     CsvSanitizer::escapeCell($r->dividend_yield),
                     CsvSanitizer::escapeCell($r->rsi_14),
                     CsvSanitizer::escapeCell($r->overall_score),
+                    CsvSanitizer::escapeCell($r->safety_risk_score),
+                    CsvSanitizer::escapeCell($r->safety_category ?? ''),
+                    $r->safeguard_triggered ? 'true' : 'false',
                     CsvSanitizer::escapeCell($r->as_of ? substr((string) $r->as_of, 0, 10) : ''),
                     $r->is_demo ? 'true' : 'false',
                     $exportedAt,
@@ -169,6 +173,8 @@ class ScreenerController extends Controller
             'above_sma200' => $request->boolean('above_sma200'),
             'rel_strength_min' => $this->numParam($request->query('rel_strength_min')),
             'score_min' => $this->numParam($request->query('score_min')),
+            'max_safety_risk' => $this->numParam($request->query('max_safety_risk')),
+            'exclude_flagged' => $request->boolean('exclude_flagged'),
             'sort' => (string) $request->query('sort', 'overall_score'),
             'dir' => strtolower((string) $request->query('dir', 'desc')) === 'asc' ? 'asc' : 'desc',
         ];
@@ -194,6 +200,7 @@ class ScreenerController extends Controller
             ->leftJoin('instrument_fundamentals_latest', 'instrument_fundamentals_latest.instrument_id', '=', 'instruments.id')
             ->leftJoin('instrument_technicals_latest', 'instrument_technicals_latest.instrument_id', '=', 'instruments.id')
             ->leftJoin('instrument_scores', 'instrument_scores.instrument_id', '=', 'instruments.id')
+            ->leftJoin('stock_safety_assessments', 'stock_safety_assessments.instrument_id', '=', 'instruments.id')
             ->where('instruments.is_active', true)
             ->select([
                 'instruments.id',
@@ -224,6 +231,9 @@ class ScreenerController extends Controller
                 'instrument_technicals_latest.relative_strength_1m',
                 'instrument_scores.overall_score',
                 'instrument_scores.data_coverage',
+                'stock_safety_assessments.risk_score as safety_risk_score',
+                'stock_safety_assessments.risk_category as safety_category',
+                'stock_safety_assessments.safeguard_triggered',
             ]);
 
         if ($filters['q'] !== '') {
@@ -301,6 +311,16 @@ class ScreenerController extends Controller
         if ($filters['score_min'] !== null) {
             $query->where('instrument_scores.overall_score', '>=', $filters['score_min']);
         }
+        if ($filters['max_safety_risk'] !== null) {
+            $query->whereNotNull('stock_safety_assessments.risk_score')
+                ->where('stock_safety_assessments.risk_score', '<=', $filters['max_safety_risk']);
+        }
+        if ($filters['exclude_flagged']) {
+            $query->where(function ($sub): void {
+                $sub->whereNull('stock_safety_assessments.safeguard_triggered')
+                    ->orWhere('stock_safety_assessments.safeguard_triggered', false);
+            });
+        }
 
         return $query;
     }
@@ -329,6 +349,9 @@ class ScreenerController extends Controller
             'rsi_14' => $row->rsi_14 !== null ? (string) $row->rsi_14 : null,
             'overall_score' => $row->overall_score !== null ? (string) $row->overall_score : null,
             'data_coverage' => $row->data_coverage !== null ? (string) $row->data_coverage : null,
+            'safety_risk_score' => $row->safety_risk_score !== null ? (string) $row->safety_risk_score : null,
+            'safety_category' => $row->safety_category ?? 'insufficient_data',
+            'safeguard_triggered' => (bool) ($row->safeguard_triggered ?? false),
             'as_of' => $row->as_of ? substr((string) $row->as_of, 0, 10) : null,
             'is_demo' => (bool) $row->is_demo,
         ];

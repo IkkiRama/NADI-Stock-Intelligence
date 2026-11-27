@@ -1,24 +1,6 @@
 <?php
 
 return [
-    'opportunities' => [
-        'slug' => 'opportunities',
-        'phase' => 3,
-        'title_key' => 'nav.opportunities',
-        'description_key' => 'planned.opportunities.desc',
-    ],
-    'stock-safety' => [
-        'slug' => 'stock-safety',
-        'phase' => 3,
-        'title_key' => 'nav.stock_safety',
-        'description_key' => 'planned.stock_safety.desc',
-    ],
-    'entry-exit' => [
-        'slug' => 'entry-exit',
-        'phase' => 3,
-        'title_key' => 'nav.entry_exit',
-        'description_key' => 'planned.entry_exit.desc',
-    ],
     'strategy-lab' => [
         'slug' => 'strategy-lab',
         'phase' => 12,
@@ -72,12 +54,6 @@ return [
         'phase' => 8,
         'title_key' => 'nav.research_center',
         'description_key' => 'planned.research_center.desc',
-    ],
-    'alerts-calendar' => [
-        'slug' => 'alerts-calendar',
-        'phase' => 3,
-        'title_key' => 'nav.alerts_calendar',
-        'description_key' => 'planned.alerts_calendar.desc',
     ],
     'calculators' => [
         'slug' => 'calculators',

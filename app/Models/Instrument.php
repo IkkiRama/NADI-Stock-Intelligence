@@ -77,4 +77,24 @@ class Instrument extends Model
     {
         return $this->hasMany(InstrumentScoreHistory::class)->orderBy('score_date');
     }
+
+    public function regulatoryStatus(): HasOne
+    {
+        return $this->hasOne(InstrumentRegulatoryStatus::class);
+    }
+
+    public function safetyAssessment(): HasOne
+    {
+        return $this->hasOne(StockSafetyAssessment::class);
+    }
+
+    public function safetyHistory(): HasMany
+    {
+        return $this->hasMany(StockSafetyHistory::class)->orderBy('assessment_date');
+    }
+
+    public function tradingSignals(): HasMany
+    {
+        return $this->hasMany(TradingSignal::class)->orderByDesc('signal_date');
+    }
 }

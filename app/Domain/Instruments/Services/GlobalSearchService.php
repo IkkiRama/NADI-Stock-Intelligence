@@ -230,7 +230,13 @@ final class GlobalSearchService
         $pages = [
             ['key' => 'nav.overview', 'href' => '/dashboard', 'phase' => 1, 'status' => 'available'],
             ['key' => 'nav.global_markets', 'href' => '/markets', 'phase' => 1, 'status' => 'available'],
+            ['key' => 'nav.heatmap', 'href' => '/heatmap', 'phase' => 2, 'status' => 'available'],
             ['key' => 'nav.stock_explorer', 'href' => '/stocks', 'phase' => 1, 'status' => 'available'],
+            ['key' => 'nav.screener', 'href' => '/screener', 'phase' => 2, 'status' => 'available'],
+            ['key' => 'nav.opportunities', 'href' => '/opportunities', 'phase' => 3, 'status' => 'available'],
+            ['key' => 'nav.stock_safety', 'href' => '/stock-safety', 'phase' => 3, 'status' => 'available'],
+            ['key' => 'nav.entry_exit', 'href' => '/entry-exit', 'phase' => 3, 'status' => 'available'],
+            ['key' => 'nav.alerts_calendar', 'href' => '/alerts-calendar', 'phase' => 3, 'status' => 'available'],
             ['key' => 'nav.settings', 'href' => '/settings/preferences', 'phase' => 1, 'status' => 'available'],
         ];
 

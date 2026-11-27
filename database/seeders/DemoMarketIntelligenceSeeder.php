@@ -9,8 +9,11 @@ use App\Models\DataSource;
 use App\Models\FinancialStatement;
 use App\Models\FxRateDaily;
 use App\Models\Instrument;
+use App\Models\InstrumentRegulatoryStatus;
 use App\Models\InstrumentScore;
 use App\Models\InstrumentScoreHistory;
+use App\Models\StockSafetyAssessment;
+use App\Models\StockSafetyHistory;
 use App\Support\Math\Dec;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Seeder;
@@ -219,7 +222,64 @@ class DemoMarketIntelligenceSeeder extends Seeder
             }
         }
 
-        // 3. Run full analytics refresh
+        // 2b. Seed demo regulatory status edge case (GOTO special monitoring) & upcoming demo calendar events
+        $upcomingMap = [
+            'GOTO' => null,
+            'BBCA' => ['days' => 10, 'cash' => '240.000000', 'notes' => 'Demo agenda dividen final mendatang'],
+            'MSFT' => ['days' => 18, 'cash' => '0.830000', 'notes' => 'Demo upcoming quarterly cash dividend'],
+            'DBS' => ['days' => 24, 'cash' => '0.540000', 'notes' => 'Demo upcoming interim cash dividend'],
+        ];
+        $upcomingRows = [];
+        foreach ($instruments as $inst) {
+            $sym = strtoupper($inst->symbol);
+            if ($sym === 'GOTO') {
+                InstrumentRegulatoryStatus::query()->updateOrCreate(
+                    ['instrument_id' => $inst->id],
+                    [
+                        'is_suspended' => false,
+                        'has_exchange_warning' => true,
+                        'has_special_monitoring' => true,
+                        'free_float_pct' => '8.50',
+                        'top_holder_pct' => '74.20',
+                        'status_notes' => 'Demo: Pemantauan khusus volatilitas & rugi bersih',
+                        'source_note' => 'Demo Simulated Status',
+                        'is_demo' => true,
+                        'updated_at' => $now,
+                    ]
+                );
+            } elseif (isset($upcomingMap[$sym]) && $upcomingMap[$sym] !== null) {
+                $cfg = $upcomingMap[$sym];
+                $exDate = $today->addDays($cfg['days']);
+                while ($exDate->isWeekend()) {
+                    $exDate = $exDate->addDay();
+                }
+                $upcomingRows[] = [
+                    'instrument_id' => $inst->id,
+                    'action_type' => 'cash_dividend',
+                    'ex_date' => $exDate->toDateString(),
+                    'record_date' => $exDate->addDay()->toDateString(),
+                    'payment_date' => $exDate->addDays(12)->toDateString(),
+                    'declared_currency' => $inst->currency,
+                    'cash_amount' => $cfg['cash'],
+                    'ratio_numerator' => null,
+                    'ratio_denominator' => null,
+                    'notes' => $cfg['notes'],
+                    'data_source_id' => $source->id,
+                    'is_demo' => true,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ];
+            }
+        }
+        if (! empty($upcomingRows)) {
+            CorporateAction::query()->upsert(
+                $upcomingRows,
+                ['instrument_id', 'action_type', 'ex_date'],
+                ['record_date', 'payment_date', 'declared_currency', 'cash_amount', 'notes', 'data_source_id', 'is_demo', 'updated_at']
+            );
+        }
+
+        // 3. Run full analytics refresh (includes Stock Safety & Trading Signals)
         $refreshIntelligence->execute();
 
         // 4. Backfill 8 weekly historical score points around latest computed score
@@ -254,6 +314,42 @@ class DemoMarketIntelligenceSeeder extends Seeder
                 $chunk,
                 ['instrument_id', 'score_date'],
                 ['overall_score', 'components', 'calculation_version']
+            );
+        }
+
+        // 5. Backfill 6 weekly historical Stock Safety points around latest assessment
+        $assessments = StockSafetyAssessment::query()->whereNotNull('risk_score')->get();
+        $safetyHistRows = [];
+        foreach ($assessments as $assess) {
+            $rng = SeededRandom::fromKey('SAFHIST:'.$assess->instrument_id);
+            $base = (float) $assess->risk_score;
+            for ($w = 6; $w >= 1; $w--) {
+                $d = CarbonImmutable::parse($assess->as_of_date->toDateString(), 'UTC')->subWeeks($w)->toDateString();
+                $jitter = ($rng->nextFloat() - 0.5) * 10.0;
+                $val = max(2.0, min(98.0, $base + $jitter));
+                $cat = match (true) {
+                    $val >= 70.0 => 'high',
+                    $val >= 50.0 => 'elevated',
+                    $val >= 25.0 => 'moderate',
+                    default => 'low',
+                };
+                $safetyHistRows[] = [
+                    'instrument_id' => $assess->instrument_id,
+                    'assessment_date' => $d,
+                    'risk_score' => Dec::round(number_format($val, 4, '.', ''), 2),
+                    'risk_category' => $cat,
+                    'safeguard_triggered' => $assess->safeguard_triggered && $val >= 65.0,
+                    'triggered_count' => is_array($assess->triggered_rules) ? count($assess->triggered_rules) : 0,
+                    'created_at' => $now,
+                ];
+            }
+        }
+
+        foreach (array_chunk($safetyHistRows, 250) as $chunk) {
+            StockSafetyHistory::query()->upsert(
+                $chunk,
+                ['instrument_id', 'assessment_date'],
+                ['risk_score', 'risk_category', 'safeguard_triggered', 'triggered_count']
             );
         }
     }

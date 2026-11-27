@@ -10,6 +10,7 @@ use Database\Seeders\DemoPriceSeeder;
 use Database\Seeders\ExchangeSeeder;
 use Database\Seeders\MarketUniverseSeeder;
 use Database\Seeders\RoleSeeder;
+use Database\Seeders\SafetyConfigSeeder;
 use Database\Seeders\ScoringConfigSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -28,6 +29,7 @@ class MarketAndStockPagesTest extends TestCase
             MarketUniverseSeeder::class,
             DataSourceSeeder::class,
             ScoringConfigSeeder::class,
+            SafetyConfigSeeder::class,
             DemoPriceSeeder::class,
             DemoMarketIntelligenceSeeder::class,
         ]);
@@ -71,6 +73,8 @@ class MarketAndStockPagesTest extends TestCase
                 ->has('fundamentals')
                 ->has('technicals')
                 ->has('score')
+                ->has('safety')
+                ->has('signalsByHorizon.swing')
                 ->has('corporateActions')
                 ->has('indicatorSeries.sma20')
             );
@@ -80,7 +84,8 @@ class MarketAndStockPagesTest extends TestCase
         $this->actingAs($user)->get('/segera/unknown-module')->assertNotFound();
         $this->actingAs($user)->get('/segera/heatmap')->assertRedirect('/heatmap');
         $this->actingAs($user)->get('/segera/screener')->assertRedirect('/screener');
-        $this->actingAs($user)->get('/segera/opportunities')->assertOk();
+        $this->actingAs($user)->get('/segera/opportunities')->assertRedirect('/opportunities');
+        $this->actingAs($user)->get('/segera/portfolio')->assertOk();
     }
 
     public function test_watchlist_add_and_remove_are_scoped_to_authenticated_user(): void

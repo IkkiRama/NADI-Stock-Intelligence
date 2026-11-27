@@ -54,9 +54,9 @@ export const nadiNavigationGroups: NadiNavGroup[] = [
     {
         groupKey: 'nav.group.intelligence',
         items: [
-            { key: 'nav.opportunities', href: '/segera/opportunities', icon: Sparkles, status: 'planned', phase: 3 },
-            { key: 'nav.stock_safety', href: '/segera/stock-safety', icon: ShieldAlert, status: 'planned', phase: 3 },
-            { key: 'nav.entry_exit', href: '/segera/entry-exit', icon: Target, status: 'planned', phase: 3 },
+            { key: 'nav.opportunities', href: '/opportunities', icon: Sparkles, status: 'available', phase: 3 },
+            { key: 'nav.stock_safety', href: '/stock-safety', icon: ShieldAlert, status: 'available', phase: 3 },
+            { key: 'nav.entry_exit', href: '/entry-exit', icon: Target, status: 'available', phase: 3 },
             { key: 'nav.strategy_lab', href: '/segera/strategy-lab', icon: FlaskConical, status: 'planned', phase: 12 },
         ],
     },
@@ -81,7 +81,7 @@ export const nadiNavigationGroups: NadiNavGroup[] = [
     {
         groupKey: 'nav.group.tools',
         items: [
-            { key: 'nav.alerts_calendar', href: '/segera/alerts-calendar', icon: Bell, status: 'planned', phase: 3 },
+            { key: 'nav.alerts_calendar', href: '/alerts-calendar', icon: Bell, status: 'available', phase: 3 },
             { key: 'nav.calculators', href: '/segera/calculators', icon: Calculator, status: 'planned', phase: 4 },
         ],
     },

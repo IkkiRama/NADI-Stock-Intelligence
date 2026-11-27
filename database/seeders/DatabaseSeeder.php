@@ -15,6 +15,7 @@ class DatabaseSeeder extends Seeder
             DataSourceSeeder::class,
             FeatureFlagSeeder::class,
             ScoringConfigSeeder::class,
+            SafetyConfigSeeder::class,
             AdminUserSeeder::class,
             DemoPriceSeeder::class,
             DemoMarketIntelligenceSeeder::class,

@@ -10,6 +10,7 @@ import {
     HistogramSeries,
     type IChartApi,
     LineSeries,
+    LineStyle,
     type SeriesMarker,
     type Time,
     createChart,
@@ -60,11 +61,29 @@ export interface BenchmarkOverlayData {
     points: Array<{ date: string; close: string }>;
 }
 
+export interface PriceLevelOverlay {
+    support?: number | null;
+    resistance?: number | null;
+    entryLow?: number | null;
+    entryHigh?: number | null;
+    stopLoss?: number | null;
+    target1?: number | null;
+    target2?: number | null;
+}
+
+export interface SignalMarkerInput {
+    date: string;
+    stance: string;
+    label: string;
+}
+
 interface PriceChartProps {
     bars: OhlcvBar[];
     indicatorSeries?: IndicatorSeriesData;
     corporateActions?: CorporateActionMarkerInput[];
     benchmarkOverlay?: BenchmarkOverlayData | null;
+    priceLevels?: PriceLevelOverlay | null;
+    signalMarkers?: SignalMarkerInput[];
     defaultRange?: string;
     height?: number;
     showVolume?: boolean;
@@ -80,6 +99,8 @@ export function PriceChart({
     indicatorSeries,
     corporateActions = [],
     benchmarkOverlay,
+    priceLevels,
+    signalMarkers = [],
     defaultRange,
     height = 360,
     showVolume = true,
@@ -108,8 +129,17 @@ export function PriceChart({
     });
     const [subPane, setSubPane] = useState<SubPaneKey>('none');
     const [showBenchmark, setShowBenchmark] = useState(false);
+    const [showLevels, setShowLevels] = useState(true);
 
     const hasIndicators = Boolean(indicatorSeries && (indicatorSeries.sma20?.length || indicatorSeries.rsi14?.length));
+    const hasLevels = Boolean(
+        priceLevels &&
+            (priceLevels.support ||
+                priceLevels.resistance ||
+                priceLevels.entryLow ||
+                priceLevels.stopLoss ||
+                priceLevels.target1),
+    );
 
     const cutoffDate = useMemo(() => {
         if (bars.length === 0) {
@@ -239,11 +269,10 @@ export function PriceChart({
             );
         }
 
-        // Corporate action markers on valid bar dates
+        // Corporate action & historical signal markers (merged & sorted ascending by date for lightweight-charts)
         const barDateSet = new Set(filteredBars.map((b) => b.date));
-        const markers: SeriesMarker<Time>[] = corporateActions
+        const actionMarkerList: SeriesMarker<Time>[] = corporateActions
             .filter((a) => barDateSet.has(a.ex_date))
-            .sort((a, b) => a.ex_date.localeCompare(b.ex_date))
             .map((a) => ({
                 time: a.ex_date as Time,
                 position: a.action_type === 'cash_dividend' ? 'belowBar' : 'aboveBar',
@@ -252,8 +281,47 @@ export function PriceChart({
                 text: a.action_type === 'cash_dividend' ? 'DIV' : 'SPLIT',
             }));
 
-        if (markers.length > 0) {
-            createSeriesMarkers(mainSeries, markers);
+        const sigMarkerList: SeriesMarker<Time>[] = signalMarkers
+            .filter((s) => barDateSet.has(s.date))
+            .map((s) => ({
+                time: s.date as Time,
+                position: 'belowBar',
+                color: s.stance === 'actionable_setup' ? colors.up : s.stance === 'suppressed_by_safety' ? colors.down : colors.sma20,
+                shape: s.stance === 'actionable_setup' ? 'arrowUp' : 'square',
+                text: s.label,
+            }));
+
+        const combinedMarkers = [...actionMarkerList, ...sigMarkerList].sort((a, b) =>
+            String(a.time).localeCompare(String(b.time)),
+        );
+
+        if (combinedMarkers.length > 0) {
+            createSeriesMarkers(mainSeries, combinedMarkers);
+        }
+
+        // Price Level Lines (Support / Resistance / Entry / Stop-Loss / Targets)
+        if (showLevels && priceLevels) {
+            const drawLevel = (price: number | null | undefined, title: string, color: string, lineStyle: LineStyle) => {
+                if (price === null || price === undefined || !Number.isFinite(price) || price <= 0) {
+                    return;
+                }
+                mainSeries.createPriceLine({
+                    price,
+                    color,
+                    lineWidth: 1,
+                    lineStyle,
+                    axisLabelVisible: true,
+                    title,
+                });
+            };
+
+            drawLevel(priceLevels.support, 'Support', '#64748B', LineStyle.Dotted);
+            drawLevel(priceLevels.resistance, 'Resistance', '#D97706', LineStyle.Dotted);
+            drawLevel(priceLevels.entryLow, 'Entry Low', '#0284C7', LineStyle.Dashed);
+            drawLevel(priceLevels.entryHigh, 'Entry High', '#0284C7', LineStyle.Dashed);
+            drawLevel(priceLevels.stopLoss, 'Stop Loss', colors.down, LineStyle.Solid);
+            drawLevel(priceLevels.target1, 'TP1', colors.up, LineStyle.Dashed);
+            drawLevel(priceLevels.target2, 'TP2', colors.up, LineStyle.Dotted);
         }
 
         // Price overlays
@@ -409,7 +477,7 @@ export function PriceChart({
             subChart?.remove();
             chart.remove();
         };
-    }, [filteredBars, chartType, height, showVolume, isFullscreen, overlays, subPane, showBenchmark, indicatorSeries, corporateActions, benchmarkOverlay, cutoffDate, hasIndicators]);
+    }, [filteredBars, chartType, height, showVolume, isFullscreen, overlays, subPane, showBenchmark, showLevels, indicatorSeries, corporateActions, signalMarkers, priceLevels, benchmarkOverlay, cutoffDate, hasIndicators]);
 
     const toggleFullscreen = async () => {
         if (!containerRef.current) {
@@ -529,6 +597,18 @@ export function PriceChart({
                                 )}
                             >
                                 {t('chart.benchmark_overlay')}: {benchmarkOverlay.code}
+                            </button>
+                        )}
+                        {hasLevels && (
+                            <button
+                                type="button"
+                                onClick={() => setShowLevels((v) => !v)}
+                                className={cn(
+                                    'rounded border px-1.5 py-0.5 transition-colors',
+                                    showLevels ? 'border-primary bg-primary text-primary-foreground' : 'border-border text-muted-foreground hover:text-foreground',
+                                )}
+                            >
+                                {t('chart.levels')}
                             </button>
                         )}
                     </div>

@@ -14,7 +14,11 @@ class RefreshAnalyticsCommand extends Command
     public function handle(RefreshMarketIntelligence $action): int
     {
         $counts = $action->execute();
-        $this->info("Refreshed analytics: {$counts['fundamentals']} fundamentals, {$counts['technicals']} technicals, {$counts['scores']} scores.");
+        $this->info(
+            "Refreshed analytics: {$counts['fundamentals']} fundamentals, {$counts['technicals']} technicals, "
+            ."{$counts['scores']} scores, {$counts['safety']} safety assessments, {$counts['signals']} signals, "
+            ."{$counts['alerts_triggered']} alert events."
+        );
 
         return self::SUCCESS;
     }

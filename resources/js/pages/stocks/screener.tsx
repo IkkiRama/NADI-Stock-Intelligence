@@ -3,6 +3,7 @@ import { DataTable, type DataTableColumn } from '@/components/nadi/data-table';
 import { DemoBadge } from '@/components/nadi/demo-badge';
 import { EmptyState } from '@/components/nadi/empty-state';
 import { Money } from '@/components/nadi/money';
+import { SafetyBadge } from '@/components/nadi/safety-badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -37,6 +38,9 @@ interface ScreenerRow {
     dividend_yield: string | null;
     rsi_14: string | null;
     overall_score: string | null;
+    safety_risk_score: string | null;
+    safety_category: string | null;
+    safeguard_triggered: boolean;
     is_demo: boolean;
 }
 
@@ -168,6 +172,11 @@ export default function Screener({
                     {r.overall_score ?? '—'}
                 </span>
             ),
+        },
+        {
+            key: 'safety_risk',
+            header: renderSortHeader('safety_risk', t('screener.col.safety')),
+            cell: (r) => <SafetyBadge category={r.safety_category} score={r.safety_risk_score} safeguard={r.safeguard_triggered} />,
         },
         {
             key: 'close',
@@ -433,6 +442,17 @@ export default function Screener({
                                 className="h-8 text-xs"
                             />
                         </div>
+
+                        <div className="space-y-1">
+                            <Label className="text-[11px]">{t('screener.max_safety_risk')}</Label>
+                            <Input
+                                type="number"
+                                step="any"
+                                value={String(form.max_safety_risk ?? '')}
+                                onChange={(e) => setForm({ ...form, max_safety_risk: e.target.value })}
+                                className="h-8 text-xs"
+                            />
+                        </div>
                     </div>
 
                     <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
@@ -451,6 +471,10 @@ export default function Screener({
                             <label className="flex items-center gap-1.5">
                                 <Checkbox checked={Boolean(form.above_sma200)} onCheckedChange={(c) => setForm({ ...form, above_sma200: Boolean(c) })} />
                                 <span>{t('screener.above_sma200')}</span>
+                            </label>
+                            <label className="flex items-center gap-1.5">
+                                <Checkbox checked={Boolean(form.exclude_flagged)} onCheckedChange={(c) => setForm({ ...form, exclude_flagged: Boolean(c) })} />
+                                <span>{t('screener.exclude_flagged')}</span>
                             </label>
                         </div>
 

@@ -18,6 +18,22 @@ class PlannedModuleController extends Controller
             return redirect()->route('screener.index');
         }
 
+        if ($slug === 'opportunities') {
+            return redirect()->route('opportunities.index');
+        }
+
+        if ($slug === 'stock-safety') {
+            return redirect()->route('stock-safety.index');
+        }
+
+        if ($slug === 'entry-exit') {
+            return redirect()->route('entry-exit.index');
+        }
+
+        if ($slug === 'alerts-calendar') {
+            return redirect()->route('alerts-calendar.index');
+        }
+
         $module = config("nadi_modules.{$slug}");
         abort_if(! is_array($module), 404);
 

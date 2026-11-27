@@ -6,6 +6,7 @@ use App\Domain\Analytics\Services\PriceReturnService;
 use App\Domain\Analytics\Services\TechnicalIndicatorService;
 use App\Domain\MarketData\Actions\RefreshMarketIntelligence;
 use App\Domain\MarketData\Services\MarketClockService;
+use App\Domain\TradingSignals\Services\SmartEntryExitService;
 use App\Models\Exchange;
 use App\Models\IndexValueDaily;
 use App\Models\Instrument;
@@ -141,6 +142,10 @@ class StockController extends Controller
                 'scoreHistory',
                 'corporateActions',
                 'financialStatements',
+                'regulatoryStatus',
+                'safetyAssessment',
+                'safetyHistory',
+                'tradingSignals',
             ])
             ->where('exchange_id', $exchangeModel->id)
             ->whereRaw('LOWER(symbol) = ?', [strtolower($symbol)])
@@ -224,6 +229,56 @@ class StockController extends Controller
         $fund = $instrument->latestFundamentals;
         $tech = $instrument->latestTechnicals;
         $score = $instrument->latestScore;
+        $safety = $instrument->safetyAssessment;
+        $regulatory = $instrument->regulatoryStatus;
+
+        $signalsByHorizon = [];
+        foreach (SmartEntryExitService::HORIZONS as $h) {
+            $sig = $instrument->tradingSignals->where('horizon', $h)->firstWhere('is_latest', true);
+            $signalsByHorizon[$h] = $sig ? [
+                'id' => $sig->id,
+                'horizon' => $sig->horizon,
+                'signal_date' => $sig->signal_date->toDateString(),
+                'stance' => $sig->stance,
+                'entry_low' => $sig->entry_low !== null ? (string) $sig->entry_low : null,
+                'entry_high' => $sig->entry_high !== null ? (string) $sig->entry_high : null,
+                'confirmation_price' => $sig->confirmation_price !== null ? (string) $sig->confirmation_price : null,
+                'stop_loss' => $sig->stop_loss !== null ? (string) $sig->stop_loss : null,
+                'invalidation_price' => $sig->invalidation_price !== null ? (string) $sig->invalidation_price : null,
+                'target_1' => $sig->target_1 !== null ? (string) $sig->target_1 : null,
+                'target_2' => $sig->target_2 !== null ? (string) $sig->target_2 : null,
+                'trailing_stop_atr_mult' => $sig->trailing_stop_atr_mult !== null ? (string) $sig->trailing_stop_atr_mult : null,
+                'support_level' => $sig->support_level !== null ? (string) $sig->support_level : null,
+                'resistance_level' => $sig->resistance_level !== null ? (string) $sig->resistance_level : null,
+                'gross_rr' => $sig->gross_rr !== null ? (string) $sig->gross_rr : null,
+                'net_rr' => $sig->net_rr !== null ? (string) $sig->net_rr : null,
+                'entry_stages' => $sig->entry_stages ?? [],
+                'rationale' => $sig->rationale ?? [],
+                'invalidation_condition' => $sig->invalidation_condition,
+                'safeguard_suppressed' => (bool) $sig->safeguard_suppressed,
+                'calculation_version' => $sig->calculation_version,
+                'is_demo' => (bool) $sig->is_demo,
+            ] : null;
+        }
+
+        $signalHistory = $instrument->tradingSignals
+            ->where('horizon', 'swing')
+            ->take(8)
+            ->map(fn ($s): array => [
+                'id' => $s->id,
+                'signal_date' => $s->signal_date->toDateString(),
+                'stance' => $s->stance,
+                'entry_low' => $s->entry_low !== null ? (string) $s->entry_low : null,
+                'stop_loss' => $s->stop_loss !== null ? (string) $s->stop_loss : null,
+                'target_1' => $s->target_1 !== null ? (string) $s->target_1 : null,
+                'net_rr' => $s->net_rr !== null ? (string) $s->net_rr : null,
+                'safeguard_suppressed' => (bool) $s->safeguard_suppressed,
+            ])
+            ->values()
+            ->all();
+
+        $exCode = strtoupper($exchangeModel->code);
+        $tradingCosts = config("nadi.trading_costs.{$exCode}") ?? config('nadi.trading_costs.DEFAULT');
 
         return Inertia::render('stocks/show', [
             'instrument' => [
@@ -356,6 +411,34 @@ class StockController extends Controller
                 'notes' => $a->notes,
                 'is_demo' => (bool) $a->is_demo,
             ])->values()->all(),
+            'safety' => $safety ? [
+                'as_of_date' => $safety->as_of_date->toDateString(),
+                'risk_score' => $safety->risk_score !== null ? (string) $safety->risk_score : null,
+                'risk_category' => $safety->risk_category,
+                'safeguard_triggered' => (bool) $safety->safeguard_triggered,
+                'triggered_rules' => $safety->triggered_rules ?? [],
+                'data_confidence' => (string) $safety->data_confidence,
+                'missing_factors' => $safety->missing_factors ?? [],
+                'calculation_version' => $safety->calculation_version,
+                'is_demo' => (bool) $safety->is_demo,
+                'regulatory' => $regulatory ? [
+                    'is_suspended' => (bool) $regulatory->is_suspended,
+                    'has_exchange_warning' => (bool) $regulatory->has_exchange_warning,
+                    'has_special_monitoring' => (bool) $regulatory->has_special_monitoring,
+                    'free_float_pct' => $regulatory->free_float_pct !== null ? (string) $regulatory->free_float_pct : null,
+                    'top_holder_pct' => $regulatory->top_holder_pct !== null ? (string) $regulatory->top_holder_pct : null,
+                    'status_notes' => $regulatory->status_notes,
+                    'source_note' => $regulatory->source_note,
+                ] : null,
+            ] : null,
+            'safetyHistory' => $instrument->safetyHistory->map(fn ($h): array => [
+                'date' => $h->assessment_date->toDateString(),
+                'risk_score' => $h->risk_score !== null ? (string) $h->risk_score : null,
+                'risk_category' => $h->risk_category,
+            ])->values()->all(),
+            'signalsByHorizon' => $signalsByHorizon,
+            'signalHistory' => $signalHistory,
+            'tradingCosts' => $tradingCosts,
             'inWatchlist' => $inWatchlist,
         ]);
     }

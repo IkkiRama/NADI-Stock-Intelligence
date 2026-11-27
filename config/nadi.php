@@ -1,7 +1,7 @@
 <?php
 
 return [
-    'version' => '0.2.0-phase2',
+    'version' => '0.3.0-phase3',
 
     'locales' => ['id', 'en'],
 
@@ -41,5 +41,16 @@ return [
         'trading_signals',
         'curated_news',
         'upcoming_events',
+    ],
+
+    'trading_costs' => [
+        'IDX' => ['buy_fee_pct' => '0.0015', 'sell_fee_pct' => '0.0025', 'slippage_pct' => '0.0010'],
+        'NYSE' => ['buy_fee_pct' => '0.0005', 'sell_fee_pct' => '0.0005', 'slippage_pct' => '0.0005'],
+        'NASDAQ' => ['buy_fee_pct' => '0.0005', 'sell_fee_pct' => '0.0005', 'slippage_pct' => '0.0005'],
+        'SGX' => ['buy_fee_pct' => '0.0015', 'sell_fee_pct' => '0.0015', 'slippage_pct' => '0.0010'],
+        'SSE' => ['buy_fee_pct' => '0.0015', 'sell_fee_pct' => '0.0020', 'slippage_pct' => '0.0010'],
+        'SZSE' => ['buy_fee_pct' => '0.0015', 'sell_fee_pct' => '0.0020', 'slippage_pct' => '0.0010'],
+        'HKEX' => ['buy_fee_pct' => '0.0018', 'sell_fee_pct' => '0.0018', 'slippage_pct' => '0.0010'],
+        'DEFAULT' => ['buy_fee_pct' => '0.0015', 'sell_fee_pct' => '0.0015', 'slippage_pct' => '0.0010'],
     ],
 ];

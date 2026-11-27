@@ -6,16 +6,24 @@ use App\Domain\Analytics\Services\FundamentalCalculator;
 use App\Domain\Analytics\Services\PriceReturnService;
 use App\Domain\Analytics\Services\StockScoringService;
 use App\Domain\Analytics\Services\TechnicalIndicatorService;
+use App\Domain\Notifications\Services\AlertEvaluator;
+use App\Domain\StockSafety\Services\StockSafetyService;
+use App\Domain\TradingSignals\Services\SmartEntryExitService;
 use App\Models\DataImportRun;
 use App\Models\IndexValueDaily;
 use App\Models\Instrument;
 use App\Models\InstrumentFundamentalLatest;
 use App\Models\InstrumentPriceDaily;
+use App\Models\InstrumentRegulatoryStatus;
 use App\Models\InstrumentScore;
 use App\Models\InstrumentScoreHistory;
 use App\Models\InstrumentTechnicalLatest;
+use App\Models\SafetyConfig;
 use App\Models\ScoringConfig;
 use App\Models\StockIndex;
+use App\Models\StockSafetyAssessment;
+use App\Models\StockSafetyHistory;
+use App\Models\TradingSignal;
 use App\Support\Math\Dec;
 use Illuminate\Support\Facades\Cache;
 
@@ -35,12 +43,15 @@ final class RefreshMarketIntelligence
         private readonly TechnicalIndicatorService $technicals,
         private readonly PriceReturnService $returns,
         private readonly StockScoringService $scoring,
+        private readonly StockSafetyService $safetyService,
+        private readonly SmartEntryExitService $entryExitService,
+        private readonly AlertEvaluator $alertEvaluator,
     ) {}
 
     /**
-     * Recompute latest quotes, fundamentals, technicals, and scores across active instruments.
+     * Recompute latest quotes, fundamentals, technicals, scores, stock safety, trading signals, and alerts.
      *
-     * @return array{instruments: int, fundamentals: int, technicals: int, scores: int}
+     * @return array{instruments: int, fundamentals: int, technicals: int, scores: int, safety: int, signals: int, alerts_triggered: int}
      */
     public function execute(?int $userId = null): array
     {
@@ -73,10 +84,13 @@ final class RefreshMarketIntelligence
         }
 
         $scoringConfig = ScoringConfig::query()->where('is_active', true)->orderByDesc('id')->first();
+        $safetyConfig = SafetyConfig::query()->where('is_active', true)->orderByDesc('id')->first();
+        $regulatoryById = InstrumentRegulatoryStatus::query()->get()->keyBy('instrument_id');
         $instruments = Instrument::query()->with(['exchange', 'latestQuote'])->where('is_active', true)->get();
 
         $fundById = [];
         $techById = [];
+        $barsById = [];
         $closeById = [];
         $asOfById = [];
         $now = now('UTC');
@@ -98,10 +112,11 @@ final class RefreshMarketIntelligence
                 ->where('instrument_id', $inst->id)
                 ->orderByDesc('trade_date')
                 ->limit(260)
-                ->get(['trade_date', 'open', 'high', 'low', 'close', 'volume'])
+                ->get(['trade_date', 'open', 'high', 'low', 'close', 'volume', 'value_traded'])
                 ->reverse()
                 ->values();
 
+            $barsById[$inst->id] = [];
             if ($bars->isNotEmpty()) {
                 $barArray = [];
                 $closesByDate = [];
@@ -115,8 +130,10 @@ final class RefreshMarketIntelligence
                         'low' => (string) $b->low,
                         'close' => (string) $b->close,
                         'volume' => (int) $b->volume,
+                        'value_traded' => $b->value_traded !== null ? (string) $b->value_traded : null,
                     ];
                 }
+                $barsById[$inst->id] = $barArray;
 
                 $snap = $this->technicals->latestSnapshot($barArray);
                 if ($snap !== null) {
@@ -298,6 +315,106 @@ final class RefreshMarketIntelligence
             }
         }
 
+        // Compute Stock Safety Assessments & Smart Entry/Exit Signals (short_term, swing, long_term)
+        $safetyRows = [];
+        $safetyHistoryRows = [];
+        $signalRows = [];
+        $signalLatestCutoffById = [];
+
+        foreach ($instruments as $inst) {
+            $asOf = $asOfById[$inst->id];
+            $bars = $barsById[$inst->id] ?? [];
+            $fund = $fundById[$inst->id] ?? null;
+            $tech = $techById[$inst->id] ?? null;
+            $score = $scoresById[$inst->id] ?? null;
+            $reg = $regulatoryById->get($inst->id);
+
+            $safety = $this->safetyService->assess($inst, $bars, $fund, $tech, $reg, $asOf, $safetyConfig);
+            $safetyRows[] = $safety;
+            $safetyHistoryRows[] = [
+                'instrument_id' => $inst->id,
+                'assessment_date' => $asOf,
+                'risk_score' => $safety['risk_score'],
+                'risk_category' => $safety['risk_category'],
+                'safeguard_triggered' => $safety['safeguard_triggered'],
+                'triggered_count' => count($safety['triggered_rules']),
+                'created_at' => $now,
+            ];
+
+            $exchangeCode = $inst->exchange->code;
+            $plans = $this->entryExitService->evaluateAllHorizons($inst, $exchangeCode, $bars, $fund, $tech, $score, $safety, $asOf);
+            $signalLatestCutoffById[$inst->id] = $asOf;
+
+            foreach ($plans as $plan) {
+                $plan['created_at'] = $now;
+                $plan['updated_at'] = $now;
+                $signalRows[] = $plan;
+            }
+        }
+
+        if (! empty($safetyRows)) {
+            foreach (array_chunk($safetyRows, 200) as $chunk) {
+                $encoded = array_map(function (array $row): array {
+                    $row['triggered_rules'] = json_encode($row['triggered_rules']);
+                    $row['missing_factors'] = json_encode($row['missing_factors']);
+
+                    return $row;
+                }, $chunk);
+
+                StockSafetyAssessment::query()->upsert(
+                    $encoded,
+                    ['instrument_id'],
+                    [
+                        'as_of_date', 'risk_score', 'risk_category', 'safeguard_triggered',
+                        'triggered_rules', 'data_confidence', 'missing_factors',
+                        'calculation_version', 'is_demo', 'calculated_at',
+                    ]
+                );
+            }
+
+            foreach (array_chunk($safetyHistoryRows, 200) as $chunk) {
+                StockSafetyHistory::query()->upsert(
+                    $chunk,
+                    ['instrument_id', 'assessment_date'],
+                    ['risk_score', 'risk_category', 'safeguard_triggered', 'triggered_count']
+                );
+            }
+        }
+
+        if (! empty($signalRows)) {
+            foreach ($signalLatestCutoffById as $instId => $latestDate) {
+                TradingSignal::query()
+                    ->where('instrument_id', $instId)
+                    ->where('is_latest', true)
+                    ->whereDate('signal_date', '<>', $latestDate)
+                    ->update(['is_latest' => false]);
+            }
+
+            foreach (array_chunk($signalRows, 150) as $chunk) {
+                $encoded = array_map(function (array $row): array {
+                    $row['entry_stages'] = $row['entry_stages'] !== null ? json_encode($row['entry_stages']) : null;
+                    $row['rationale'] = json_encode($row['rationale']);
+
+                    return $row;
+                }, $chunk);
+
+                TradingSignal::query()->upsert(
+                    $encoded,
+                    ['instrument_id', 'horizon', 'signal_date'],
+                    [
+                        'is_latest', 'stance', 'entry_low', 'entry_high', 'confirmation_price',
+                        'stop_loss', 'invalidation_price', 'target_1', 'target_2',
+                        'trailing_stop_atr_mult', 'support_level', 'resistance_level',
+                        'gross_rr', 'net_rr', 'entry_stages', 'rationale',
+                        'invalidation_condition', 'safeguard_suppressed',
+                        'calculation_version', 'is_demo', 'updated_at',
+                    ]
+                );
+            }
+        }
+
+        $alertsTriggered = $this->alertEvaluator->evaluateAll();
+
         $currentVersion = (int) Cache::get(RefreshLatestQuotes::CACHE_VERSION_KEY, 1);
         Cache::forever(RefreshLatestQuotes::CACHE_VERSION_KEY, $currentVersion + 1);
 
@@ -313,6 +430,9 @@ final class RefreshMarketIntelligence
             'fundamentals' => count($fundById),
             'technicals' => count($techById),
             'scores' => count($scoresById),
+            'safety' => count($safetyRows),
+            'signals' => count($signalRows),
+            'alerts_triggered' => $alertsTriggered,
         ];
     }
 }

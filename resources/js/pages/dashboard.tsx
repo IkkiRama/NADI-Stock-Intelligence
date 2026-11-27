@@ -5,6 +5,7 @@ import { EmptyState } from '@/components/nadi/empty-state';
 import { MarketStatusBadge } from '@/components/nadi/market-status-badge';
 import { ModuleEmptyState } from '@/components/nadi/module-empty-state';
 import { Money } from '@/components/nadi/money';
+import { SafetyBadge } from '@/components/nadi/safety-badge';
 import { Sparkline } from '@/components/nadi/sparkline';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -12,7 +13,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import AppLayout from '@/layouts/app-layout';
-import { formatPct, formatPrice, formatTime } from '@/lib/format';
+import { formatDate, formatNumber, formatPct, formatPrice, formatTime } from '@/lib/format';
 import { useT } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import {
@@ -73,6 +74,41 @@ interface DashboardProps {
         as_of: string | null;
         is_demo: boolean;
     }>;
+    safetyWarnings?: Array<{
+        id: number;
+        symbol: string;
+        name: string;
+        exchange_code: string;
+        risk_score: string | null;
+        risk_category: string;
+        safeguard_triggered: boolean;
+        rule_count: number;
+        is_demo: boolean;
+    }>;
+    recentSignals?: Array<{
+        id: number;
+        symbol: string;
+        name: string;
+        exchange_code: string;
+        currency: string;
+        stance: string;
+        entry_low: string | null;
+        entry_high: string | null;
+        target_1: string | null;
+        net_rr: string | null;
+        is_demo: boolean;
+    }>;
+    upcomingEvents?: Array<{
+        id: number;
+        symbol: string;
+        exchange_code: string;
+        action_type: string;
+        ex_date: string;
+        declared_currency: string | null;
+        cash_amount: string | null;
+        is_demo: boolean;
+    }>;
+    unreadAlertCount?: number;
     exchanges: Array<{ code: string; name: string; country_code: string }>;
     selectedExchange: string;
     dashboardLayout: DashboardWidgetConfig[];
@@ -85,6 +121,9 @@ export default function Dashboard({
     topMovers,
     sectorPerformance,
     watchlistItems,
+    safetyWarnings = [],
+    recentSignals = [],
+    upcomingEvents = [],
     exchanges,
     selectedExchange,
     dashboardLayout,
@@ -416,24 +455,75 @@ export default function Dashboard({
 
             case 'stock_safety_warnings':
                 return (
-                    <ModuleEmptyState
-                        key={id}
-                        title={t('dashboard.widget.stock_safety_warnings')}
-                        description={t('planned.stock_safety.desc')}
-                        phase={3}
-                        slug="stock-safety"
-                    />
+                    <section key={id} className="bg-card border-border rounded-md border p-[var(--nadi-card-p)]">
+                        <div className="mb-3 flex items-center justify-between">
+                            <h2 className="text-sm font-semibold">{t('dashboard.widget.stock_safety_warnings')}</h2>
+                            <Link href="/stock-safety" className="text-muted-foreground hover:text-foreground text-xs underline-offset-4 hover:underline">
+                                {t('app.view_all')}
+                            </Link>
+                        </div>
+                        {safetyWarnings.length === 0 ? (
+                            <p className="text-muted-foreground text-xs">{t('safety.no_rules')}</p>
+                        ) : (
+                            <div className="divide-border divide-y">
+                                {safetyWarnings.map((w) => (
+                                    <Link
+                                        key={w.id}
+                                        href={`/stocks/${w.exchange_code}/${w.symbol}`}
+                                        className="hover:bg-muted/40 flex items-center justify-between py-2 text-xs transition-colors"
+                                    >
+                                        <div>
+                                            <span className="font-semibold">{w.symbol}</span>{' '}
+                                            <span className="text-muted-foreground">{w.exchange_code}</span>
+                                            <p className="text-muted-foreground text-[11px]">
+                                                {w.rule_count} {t('safety.triggered_rules')}
+                                            </p>
+                                        </div>
+                                        <SafetyBadge category={w.risk_category} score={w.risk_score} safeguard={w.safeguard_triggered} />
+                                    </Link>
+                                ))}
+                            </div>
+                        )}
+                    </section>
                 );
 
             case 'trading_signals':
                 return (
-                    <ModuleEmptyState
-                        key={id}
-                        title={t('dashboard.widget.trading_signals')}
-                        description={t('planned.entry_exit.desc')}
-                        phase={3}
-                        slug="entry-exit"
-                    />
+                    <section key={id} className="bg-card border-border rounded-md border p-[var(--nadi-card-p)]">
+                        <div className="mb-3 flex items-center justify-between">
+                            <h2 className="text-sm font-semibold">{t('dashboard.widget.trading_signals')}</h2>
+                            <Link href="/opportunities" className="text-muted-foreground hover:text-foreground text-xs underline-offset-4 hover:underline">
+                                {t('app.view_all')}
+                            </Link>
+                        </div>
+                        {recentSignals.length === 0 ? (
+                            <p className="text-muted-foreground text-xs">{t('opportunities.empty_title')}</p>
+                        ) : (
+                            <div className="divide-border divide-y">
+                                {recentSignals.map((sig) => (
+                                    <Link
+                                        key={sig.id}
+                                        href={`/entry-exit?exchange=${sig.exchange_code}&symbol=${sig.symbol}`}
+                                        className="hover:bg-muted/40 flex items-center justify-between py-2 text-xs transition-colors"
+                                    >
+                                        <div>
+                                            <span className="font-semibold">{sig.symbol}</span>{' '}
+                                            <span className="text-muted-foreground">{sig.exchange_code}</span>
+                                            <p className="text-muted-foreground text-[11px]">{t(`signals.stance.${sig.stance}`)}</p>
+                                        </div>
+                                        <div className="text-right">
+                                            <div className="num font-semibold">
+                                                {sig.net_rr ? `R:R ${formatNumber(sig.net_rr, locale, 2, 2)}x` : '—'}
+                                            </div>
+                                            <span className="text-muted-foreground num text-[11px]">
+                                                TP {formatPrice(sig.target_1, sig.currency, locale)}
+                                            </span>
+                                        </div>
+                                    </Link>
+                                ))}
+                            </div>
+                        )}
+                    </section>
                 );
 
             case 'curated_news':
@@ -449,13 +539,41 @@ export default function Dashboard({
 
             case 'upcoming_events':
                 return (
-                    <ModuleEmptyState
-                        key={id}
-                        title={t('dashboard.widget.upcoming_events')}
-                        description={t('planned.dividends.desc')}
-                        phase={8}
-                        slug="dividends"
-                    />
+                    <section key={id} className="bg-card border-border rounded-md border p-[var(--nadi-card-p)]">
+                        <div className="mb-3 flex items-center justify-between">
+                            <h2 className="text-sm font-semibold">{t('dashboard.widget.upcoming_events')}</h2>
+                            <Link href="/alerts-calendar" className="text-muted-foreground hover:text-foreground text-xs underline-offset-4 hover:underline">
+                                {t('app.view_all')}
+                            </Link>
+                        </div>
+                        {upcomingEvents.length === 0 ? (
+                            <p className="text-muted-foreground text-xs">{t('stocks.actions.empty')}</p>
+                        ) : (
+                            <div className="divide-border divide-y">
+                                {upcomingEvents.map((ev) => (
+                                    <Link
+                                        key={ev.id}
+                                        href="/alerts-calendar"
+                                        className="hover:bg-muted/40 flex items-center justify-between py-2 text-xs transition-colors"
+                                    >
+                                        <div>
+                                            <span className="font-semibold">{ev.symbol}</span>{' '}
+                                            <span className="text-muted-foreground">{ev.exchange_code}</span>
+                                            <p className="text-muted-foreground text-[11px]">{ev.action_type}</p>
+                                        </div>
+                                        <div className="text-right">
+                                            <span className="num font-medium">{formatDate(ev.ex_date, locale)}</span>
+                                            {ev.cash_amount && (
+                                                <span className="text-muted-foreground num block text-[11px]">
+                                                    {ev.declared_currency} {ev.cash_amount}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </Link>
+                                ))}
+                            </div>
+                        )}
+                    </section>
                 );
 
             default:

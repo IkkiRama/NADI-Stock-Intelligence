@@ -3,7 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Domain\MarketData\Services\MarketOverviewService;
+use App\Models\AlertEvent;
+use App\Models\CorporateAction;
 use App\Models\Exchange;
+use App\Models\StockSafetyAssessment;
+use App\Models\TradingSignal;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -49,6 +53,83 @@ class DashboardController extends Controller
                 ->all();
         }
 
+        $safetyWarnings = StockSafetyAssessment::query()
+            ->with('instrument.exchange:id,code')
+            ->where(function ($q): void {
+                $q->where('safeguard_triggered', true)
+                    ->orWhereIn('risk_category', ['high', 'elevated']);
+            })
+            ->orderByDesc('safeguard_triggered')
+            ->orderByDesc('risk_score')
+            ->limit(5)
+            ->get()
+            ->filter(fn ($s) => $s->instrument !== null)
+            ->map(fn ($s): array => [
+                'id' => $s->instrument->id,
+                'symbol' => $s->instrument->symbol,
+                'name' => $s->instrument->name,
+                'exchange_code' => $s->instrument->exchange->code,
+                'risk_score' => $s->risk_score !== null ? (string) $s->risk_score : null,
+                'risk_category' => $s->risk_category,
+                'safeguard_triggered' => (bool) $s->safeguard_triggered,
+                'rule_count' => is_array($s->triggered_rules) ? count($s->triggered_rules) : 0,
+                'is_demo' => (bool) $s->is_demo,
+            ])
+            ->values()
+            ->all();
+
+        $recentSignals = TradingSignal::query()
+            ->with('instrument.exchange:id,code')
+            ->where('horizon', 'swing')
+            ->where('is_latest', true)
+            ->where('safeguard_suppressed', false)
+            ->whereIn('stance', ['actionable_setup', 'watchlist_setup'])
+            ->orderByRaw("CASE WHEN stance = 'actionable_setup' THEN 0 ELSE 1 END")
+            ->orderByDesc('net_rr')
+            ->limit(5)
+            ->get()
+            ->filter(fn ($sig) => $sig->instrument !== null)
+            ->map(fn ($sig): array => [
+                'id' => $sig->instrument->id,
+                'symbol' => $sig->instrument->symbol,
+                'name' => $sig->instrument->name,
+                'exchange_code' => $sig->instrument->exchange->code,
+                'currency' => $sig->instrument->currency,
+                'stance' => $sig->stance,
+                'entry_low' => $sig->entry_low !== null ? (string) $sig->entry_low : null,
+                'entry_high' => $sig->entry_high !== null ? (string) $sig->entry_high : null,
+                'target_1' => $sig->target_1 !== null ? (string) $sig->target_1 : null,
+                'net_rr' => $sig->net_rr !== null ? (string) $sig->net_rr : null,
+                'is_demo' => (bool) $sig->is_demo,
+            ])
+            ->values()
+            ->all();
+
+        $upcomingEvents = CorporateAction::query()
+            ->with('instrument.exchange:id,code')
+            ->whereDate('ex_date', '>=', now('UTC')->toDateString())
+            ->orderBy('ex_date')
+            ->limit(5)
+            ->get()
+            ->filter(fn ($a) => $a->instrument !== null)
+            ->map(fn ($a): array => [
+                'id' => $a->id,
+                'symbol' => $a->instrument->symbol,
+                'exchange_code' => $a->instrument->exchange->code,
+                'action_type' => $a->action_type,
+                'ex_date' => $a->ex_date->toDateString(),
+                'declared_currency' => $a->declared_currency,
+                'cash_amount' => $a->cash_amount !== null ? (string) $a->cash_amount : null,
+                'is_demo' => (bool) $a->is_demo,
+            ])
+            ->values()
+            ->all();
+
+        $unreadAlertCount = AlertEvent::query()
+            ->where('user_id', $user->id)
+            ->whereNull('read_at')
+            ->count();
+
         return Inertia::render('dashboard', [
             'indexCards' => $overview->indexCards(),
             'clocks' => $overview->clocks(),
@@ -56,6 +137,10 @@ class DashboardController extends Controller
             'topMovers' => $overview->topMovers($selectedExchange, 5),
             'sectorPerformance' => $overview->sectorPerformance($selectedExchange),
             'watchlistItems' => $watchlistItems,
+            'safetyWarnings' => $safetyWarnings,
+            'recentSignals' => $recentSignals,
+            'upcomingEvents' => $upcomingEvents,
+            'unreadAlertCount' => $unreadAlertCount,
             'exchanges' => Exchange::query()->where('is_active', true)->orderBy('id')->get(['code', 'name', 'country_code']),
             'selectedExchange' => $selectedExchange,
             'dashboardLayout' => $this->normalizeLayout($user->settings?->dashboard_layout),
