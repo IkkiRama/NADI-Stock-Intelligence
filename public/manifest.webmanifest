@@ -1,0 +1,24 @@
+{
+    "name": "NADI — Global Stock Intelligence",
+    "short_name": "NADI",
+    "description": "Evidence-driven stock intelligence and multi-broker portfolio management.",
+    "start_url": "/dashboard",
+    "scope": "/",
+    "display": "standalone",
+    "background_color": "#F7F8FA",
+    "theme_color": "#263447",
+    "icons": [
+        {
+            "src": "/icons/nadi-icon.svg",
+            "sizes": "any",
+            "type": "image/svg+xml",
+            "purpose": "any"
+        },
+        {
+            "src": "/icons/nadi-maskable.svg",
+            "sizes": "any",
+            "type": "image/svg+xml",
+            "purpose": "maskable"
+        }
+    ]
+}
