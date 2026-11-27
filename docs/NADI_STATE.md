@@ -2,7 +2,7 @@
 
 **Last Updated**: 2026-11-27
 **Project Path**: `D:\laragon\www\nadi`
-**Current Phase**: Phase 7 Complete — Ready for **Phase 8 (Dividends, Newsroom & Research Center)**
+**Current Phase**: Phase 8 Complete — Ready for **Phase 9 (Institutional Reports & Export Center)**
 
 ---
 
@@ -42,6 +42,14 @@
 - **Lot-Aware Two-Pass Rebalancing Simulator (`PortfolioRebalancingService`, `RiskRebalancingController`, `/risk-rebalancing`)**:
   - Persistent user target weights (`portfolio_rebalance_targets` + `risk_rebalance_prefs`), presets (`equal_weight`, `current_weights`, `clear`), Pass 1 overweight SELLs + Pass 2 cash-buffer-constrained BUYs in whole exchange lots (`TickSize` rounded), exchange fee estimates, Stock Safety safeguard suppression, and pre/post HHI comparison.
 
+### Phase 8 (Dividends, Newsroom & Research Center)
+- **Dividends & Passive Income Tracker (`DividendIncomeService`, `DividendsController`, `/dividends`, `DividendIncomeChart`)**:
+  - Strictly separates ledger-realized net dividends (`dividend_receipt` minus `dividend_tax`, YTD / 12M / All-Time) from estimated forward 12-month projections (`Estimate`-badged), computing withholding tax assumptions (`config('nadi.dividend_withholding_tax')` or user override), Yield on Market Value vs Yield on Cost, `payout_ratio > 85%` flags, and monthly realized vs projected ECharts cash-flow schedules.
+- **Financial Newsroom (`NewsroomService`, `RssNewsAdapter`, `NewsroomController`, `/newsroom`, `SyncNewsFeeds`)**:
+  - Multi-market curated briefings & offline-testable PHP `SimpleXML` RSS/Atom parser with HTTPS-only non-private-IP SSRF validation (`nadi:sync-news` scheduled hourly), portfolio/watchlist/category/country/impact filters, admin editorial publishing (`POST /newsroom/articles`), and live Dashboard & Stock Detail wiring.
+- **Investment Research Center (`ResearchCenterService`, `ResearchCenterController`, `/research-center`)**:
+  - User-isolated structured investment notes (`ResearchNote`) with 5 starter templates, stance/conviction tracking, currency-guarded implied target upside, catalysts/risks/invalidation rules, pinning, and `GlobalSearchService` (`CommandPalette`) integration.
+
 ---
 
 ## 2. Key Architectural Decisions
@@ -53,18 +61,18 @@
 ---
 
 ## 3. Database Migration Status
-All 15 migrations applied cleanly on MySQL 8.0.30 (`nadi`), including `2026_11_27_500001_create_phase7_rebalancing_targets_table`.
+All 16 migrations applied cleanly on MySQL 8.0.30 (`nadi`), including `2026_11_27_600001_create_phase8_news_research_tables`.
 
 ---
 
 ## 4. Verification & Test Results
 - `npx.cmd tsc --noEmit`: 0 errors.
-- `npm.cmd run build`: succeeded (`vite v6.1.1`, 2,650 modules transformed).
-- `php artisan test`: **87 passed (1,080 assertions)** — 0 failed, 0 skipped (Duration: 106.54s).
-  - Phase 7 Unit: `PortfolioRiskAnalyticsServiceTest`, `PortfolioRebalancingServiceTest`.
-  - Phase 7 Feature: `RiskRebalancingPageTest`, updated `MarketAndStockPagesTest`, `PreferencesAndLocalizationTest` (locale parity).
-- `php artisan migrate:fresh --seed --force` on MySQL 8.0.30: succeeded cleanly across all seeders (`max_dd = -0.05012837`, `vol = 0.18565552`, `sharpe = 0.6929`, `sortino = 1.6898`, `beta = -0.4101`, `corr_rows = 4`, `fx_buckets = 2`, `reb_rows = 4`, `pre_hhi = 4409.67`).
-- Laravel HTTP Kernel smoke test (`/`, `/login`, `/risk-rebalancing`): HTTP `200`.
+- `npm.cmd run build`: succeeded (`vite v6.1.1`, 2,654 modules transformed).
+- `php artisan test`: **92 passed (1,201 assertions)** — 0 failed, 0 skipped.
+  - Phase 8 Unit: `DividendIncomeServiceTest`, `RssNewsAdapterTest`.
+  - Phase 8 Feature: `Phase8ModulesTest`, updated `MarketAndStockPagesTest`, `PreferencesAndLocalizationTest` (locale parity).
+- `php artisan migrate:fresh --seed --force` on MySQL 8.0.30: succeeded cleanly across all seeders including `DemoNewsAndResearchSeeder` (`div_realized_all = 1200000.0000`, `div_projected_net = 7138202.5075`, `div_paying_holdings = 4`, `news_count = 12`, `research_count = 3`).
+- Laravel HTTP Kernel smoke test (`/`, `/login`, `/dashboard`, `/dividends`, `/newsroom`, `/research-center`, `/stocks/idx/bbca`): HTTP `200`.
 
 ---
 
@@ -76,7 +84,6 @@ All 15 migrations applied cleanly on MySQL 8.0.30 (`nadi`), including `2026_11_2
 
 ---
 
-## 6. Next Actionable Tasks — Phase 8 (Dividends, Newsroom & Research Center)
-1. Implement **Dividends & Passive Income Tracker** (`/dividends`: projected forward 12M dividends from historical payouts/yields clearly labeled as estimates, realized dividend ledger history, payout tax withholding, monthly dividend calendar).
-2. Implement **Financial Newsroom** (`/newsroom`: curated/imported & configurable RSS/provider news adapters with ticker tagging, sentiment/impact tags without fabricating live news, and portfolio/watchlist filters).
-3. Implement **Investment Research Center** (`/research-center`: persistent personal research notes, investment thesis templates, valuation snapshots, catalysts, and linked tickers with Global Search integration).
+## 6. Next Actionable Tasks — Phase 9 (Institutional Reports & Export Center)
+1. Implement **Printable & Downloadable Reports Center** (`/reports`: Portfolio Valuation Statement, Performance & TWR/XIRR Summary, Performance Attribution Brief, Dividend Income & Tax Schedule, and Risk/Rebalancing Plan views).
+2. Implement **Shared-Hosting Safe Exports** (clean browser print CSS / downloadable HTML/PDF-ready statements via pure PHP/React without requiring headless Chrome or heavy binary runtimes in cPanel production, alongside clean CSV exports with formula-injection sanitization).

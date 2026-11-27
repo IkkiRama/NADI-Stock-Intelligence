@@ -65,7 +65,7 @@ export const nadiNavigationGroups: NadiNavGroup[] = [
         items: [
             { key: 'nav.portfolio', href: '/portfolio', icon: Briefcase, status: 'available', phase: 4 },
             { key: 'nav.portfolio_analytics', href: '/portfolio-analytics', icon: BarChart3, status: 'available', phase: 6 },
-            { key: 'nav.dividends', href: '/segera/dividends', icon: TrendingUp, status: 'planned', phase: 8 },
+            { key: 'nav.dividends', href: '/dividends', icon: TrendingUp, status: 'available', phase: 8 },
             { key: 'nav.risk_rebalancing', href: '/risk-rebalancing', icon: Scale, status: 'available', phase: 7 },
             { key: 'nav.reports', href: '/segera/reports', icon: FileText, status: 'planned', phase: 9 },
         ],
@@ -73,9 +73,9 @@ export const nadiNavigationGroups: NadiNavGroup[] = [
     {
         groupKey: 'nav.group.research',
         items: [
-            { key: 'nav.newsroom', href: '/segera/newsroom', icon: Newspaper, status: 'planned', phase: 8 },
+            { key: 'nav.newsroom', href: '/newsroom', icon: Newspaper, status: 'available', phase: 8 },
             { key: 'nav.broker_intelligence', href: '/segera/broker-intelligence', icon: Activity, status: 'planned', phase: 10 },
-            { key: 'nav.research_center', href: '/segera/research-center', icon: BookOpen, status: 'planned', phase: 8 },
+            { key: 'nav.research_center', href: '/research-center', icon: BookOpen, status: 'available', phase: 8 },
         ],
     },
     {

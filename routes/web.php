@@ -11,13 +11,16 @@ use App\Http\Controllers\Admin\UserManagementController;
 use App\Http\Controllers\AlertsCalendarController;
 use App\Http\Controllers\CalculatorsController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DividendsController;
 use App\Http\Controllers\EntryExitController;
 use App\Http\Controllers\HeatmapController;
 use App\Http\Controllers\MarketController;
+use App\Http\Controllers\NewsroomController;
 use App\Http\Controllers\OpportunitiesController;
 use App\Http\Controllers\PlannedModuleController;
 use App\Http\Controllers\PortfolioAnalyticsController;
 use App\Http\Controllers\PortfolioController;
+use App\Http\Controllers\ResearchCenterController;
 use App\Http\Controllers\RiskRebalancingController;
 use App\Http\Controllers\ScreenerController;
 use App\Http\Controllers\SearchController;
@@ -63,6 +66,16 @@ Route::middleware(['auth'])->group(function () {
     Route::get('risk-rebalancing', [RiskRebalancingController::class, 'index'])->name('portfolio.risk-rebalancing');
     Route::put('risk-rebalancing/targets', [RiskRebalancingController::class, 'updateTargets'])->name('portfolio.risk-rebalancing.targets');
     Route::post('risk-rebalancing/presets', [RiskRebalancingController::class, 'applyPreset'])->name('portfolio.risk-rebalancing.presets');
+
+    Route::get('dividends', [DividendsController::class, 'index'])->name('dividends.index');
+    Route::get('newsroom', [NewsroomController::class, 'index'])->name('newsroom.index');
+    Route::post('newsroom/articles', [NewsroomController::class, 'store'])->name('newsroom.articles.store');
+
+    Route::get('research-center', [ResearchCenterController::class, 'index'])->name('research.index');
+    Route::post('research-center/notes', [ResearchCenterController::class, 'store'])->name('research.notes.store');
+    Route::put('research-center/notes/{researchNote}', [ResearchCenterController::class, 'update'])->name('research.notes.update');
+    Route::patch('research-center/notes/{researchNote}/pin', [ResearchCenterController::class, 'togglePin'])->name('research.notes.pin');
+    Route::delete('research-center/notes/{researchNote}', [ResearchCenterController::class, 'destroy'])->name('research.notes.destroy');
     Route::post('portfolio/accounts', [PortfolioController::class, 'storeAccount'])->name('portfolio.accounts.store');
     Route::patch('portfolio/preferences', [PortfolioController::class, 'updatePreferences'])->name('portfolio.preferences.update');
     Route::patch('portfolio/concentration-thresholds', [PortfolioController::class, 'updateConcentrationThresholds'])->name('portfolio.thresholds.update');

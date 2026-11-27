@@ -6,7 +6,7 @@ import { useT } from '@/lib/i18n';
 import { type SharedData } from '@/types';
 import { router, usePage } from '@inertiajs/react';
 import { Command } from 'cmdk';
-import { ArrowRight, Compass, Globe2, History, Languages, LayoutGrid, Monitor, Moon, Search, SlidersHorizontal, Sun } from 'lucide-react';
+import { ArrowRight, BookOpen, Compass, Globe2, History, Languages, LayoutGrid, Monitor, Moon, Newspaper, Search, SlidersHorizontal, Sun } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 interface SearchResponse {
@@ -36,6 +36,22 @@ interface SearchResponse {
         id: number;
         code: string;
         name: string;
+        href: string;
+    }>;
+    articles?: Array<{
+        id: number;
+        title: string;
+        source_name: string;
+        category: string;
+        is_demo: boolean;
+        href: string;
+    }>;
+    research?: Array<{
+        id: number;
+        title: string;
+        symbol: string | null;
+        stance: string;
+        is_demo: boolean;
         href: string;
     }>;
     pages: Array<{
@@ -136,6 +152,8 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
                                 {data.stocks.length === 0 &&
                                     data.indices.length === 0 &&
                                     data.exchanges.length === 0 &&
+                                    (data.articles?.length ?? 0) === 0 &&
+                                    (data.research?.length ?? 0) === 0 &&
                                     data.pages.length === 0 &&
                                     data.recent_views.length === 0 && (
                                         <div className="text-muted-foreground px-3 py-6 text-center text-xs">{t('palette.empty')}</div>
@@ -231,6 +249,42 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
                                                     <span className="font-medium">{ex.code}</span>
                                                     <span className="text-muted-foreground text-xs">{ex.name}</span>
                                                 </div>
+                                            </Command.Item>
+                                        ))}
+                                    </Command.Group>
+                                )}
+
+                                {(data.articles?.length ?? 0) > 0 && (
+                                    <Command.Group heading={t('palette.group.articles')} className="mb-2">
+                                        {data.articles?.map((a) => (
+                                            <Command.Item
+                                                key={`article-${a.id}`}
+                                                onSelect={() => go(a.href)}
+                                                className="aria-selected:bg-accent flex cursor-pointer items-center justify-between rounded px-2.5 py-2"
+                                            >
+                                                <div className="flex min-w-0 items-center gap-2">
+                                                    <Newspaper className="text-muted-foreground h-3.5 w-3.5 shrink-0" />
+                                                    <span className="truncate font-medium">{a.title}</span>
+                                                </div>
+                                                <span className="text-muted-foreground ml-2 shrink-0 text-[11px]">{a.source_name}</span>
+                                            </Command.Item>
+                                        ))}
+                                    </Command.Group>
+                                )}
+
+                                {(data.research?.length ?? 0) > 0 && (
+                                    <Command.Group heading={t('palette.group.research')} className="mb-2">
+                                        {data.research?.map((r) => (
+                                            <Command.Item
+                                                key={`research-${r.id}`}
+                                                onSelect={() => go(r.href)}
+                                                className="aria-selected:bg-accent flex cursor-pointer items-center justify-between rounded px-2.5 py-2"
+                                            >
+                                                <div className="flex min-w-0 items-center gap-2">
+                                                    <BookOpen className="text-muted-foreground h-3.5 w-3.5 shrink-0" />
+                                                    <span className="truncate font-medium">{r.title}</span>
+                                                </div>
+                                                {r.symbol && <span className="bg-muted ml-2 shrink-0 rounded px-1.5 py-0.5 text-[11px]">{r.symbol}</span>}
                                             </Command.Item>
                                         ))}
                                     </Command.Group>

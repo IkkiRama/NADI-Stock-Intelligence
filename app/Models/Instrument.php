@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
@@ -101,5 +102,15 @@ class Instrument extends Model
     public function portfolioHoldings(): HasMany
     {
         return $this->hasMany(PortfolioHolding::class);
+    }
+
+    public function newsArticles(): BelongsToMany
+    {
+        return $this->belongsToMany(NewsArticle::class, 'news_article_instrument');
+    }
+
+    public function researchNotes(): HasMany
+    {
+        return $this->hasMany(ResearchNote::class);
     }
 }

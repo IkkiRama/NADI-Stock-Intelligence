@@ -122,6 +122,16 @@ interface DashboardProps {
         accounts_count: number;
         is_demo: boolean;
     };
+    curatedNews?: Array<{
+        id: number;
+        slug: string;
+        title: string;
+        source_name: string;
+        category: string;
+        impact_tag: string;
+        published_at: string | null;
+        is_demo: boolean;
+    }>;
     exchanges: Array<{ code: string; name: string; country_code: string }>;
     selectedExchange: string;
     dashboardLayout: DashboardWidgetConfig[];
@@ -137,6 +147,7 @@ export default function Dashboard({
     portfolioSummary,
     safetyWarnings = [],
     recentSignals = [],
+    curatedNews = [],
     upcomingEvents = [],
     exchanges,
     selectedExchange,
@@ -585,13 +596,40 @@ export default function Dashboard({
 
             case 'curated_news':
                 return (
-                    <ModuleEmptyState
-                        key={id}
-                        title={t('dashboard.widget.curated_news')}
-                        description={t('planned.newsroom.desc')}
-                        phase={8}
-                        slug="newsroom"
-                    />
+                    <section key={id} className="bg-card border-border rounded-md border p-[var(--nadi-card-p)]">
+                        <div className="mb-3 flex items-center justify-between">
+                            <h2 className="text-sm font-semibold">{t('dashboard.widget.curated_news')}</h2>
+                            <Link href="/newsroom" className="text-muted-foreground hover:text-foreground text-xs underline-offset-4 hover:underline">
+                                {t('app.view_all')}
+                            </Link>
+                        </div>
+                        {curatedNews.length === 0 ? (
+                            <p className="text-muted-foreground text-xs">{t('news.empty.title')}</p>
+                        ) : (
+                            <div className="divide-border divide-y">
+                                {curatedNews.map((item) => (
+                                    <Link
+                                        key={item.id}
+                                        href={`/newsroom?article=${item.slug}`}
+                                        className="hover:bg-muted/40 block py-2 text-xs transition-colors"
+                                    >
+                                        <div className="flex items-center justify-between gap-2 text-[11px]">
+                                            <div className="flex items-center gap-1.5">
+                                                <span className="bg-muted rounded px-1.5 py-0.5 font-medium">
+                                                    {t(`news.cat.${item.category}`)}
+                                                </span>
+                                                {item.is_demo && <DemoBadge />}
+                                            </div>
+                                            <span className="text-muted-foreground num">
+                                                {item.published_at ? formatDate(item.published_at, locale) : '—'}
+                                            </span>
+                                        </div>
+                                        <p className="mt-1 font-medium leading-snug">{item.title}</p>
+                                    </Link>
+                                ))}
+                            </div>
+                        )}
+                    </section>
                 );
 
             case 'upcoming_events':

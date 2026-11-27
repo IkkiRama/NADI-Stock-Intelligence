@@ -19,7 +19,7 @@ import { useT } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { type BreadcrumbItem, type SharedData } from '@/types';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
-import { Briefcase, Download, LineChart, Lock, Plus, RotateCcw, Scale, UploadCloud } from 'lucide-react';
+import { Briefcase, Download, LineChart, Lock, Plus, RotateCcw, Scale, TrendingUp, UploadCloud } from 'lucide-react';
 import { useState } from 'react';
 
 interface PortfolioProps {
@@ -398,6 +398,13 @@ export default function PortfolioPage({
                             <Link href="/risk-rebalancing">
                                 <Scale className="h-3.5 w-3.5" />
                                 <span>{t('nav.risk_rebalancing')}</span>
+                            </Link>
+                        </Button>
+
+                        <Button asChild size="sm" variant="outline" className="h-8 gap-1 text-xs">
+                            <Link href="/dividends">
+                                <TrendingUp className="h-3.5 w-3.5" />
+                                <span>{t('nav.dividends')}</span>
                             </Link>
                         </Button>
 

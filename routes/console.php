@@ -17,3 +17,8 @@ Schedule::command('nadi:refresh-analytics')
     ->dailyAt('17:45')
     ->timezone('Asia/Jakarta')
     ->withoutOverlapping();
+
+Schedule::command('nadi:sync-news')
+    ->hourly()
+    ->timezone('Asia/Jakarta')
+    ->withoutOverlapping();

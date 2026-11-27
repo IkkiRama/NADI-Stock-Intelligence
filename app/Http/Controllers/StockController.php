@@ -6,7 +6,9 @@ use App\Domain\Analytics\Services\PriceReturnService;
 use App\Domain\Analytics\Services\TechnicalIndicatorService;
 use App\Domain\MarketData\Actions\RefreshMarketIntelligence;
 use App\Domain\MarketData\Services\MarketClockService;
+use App\Domain\Newsroom\Services\NewsroomService;
 use App\Domain\Portfolio\Services\PortfolioValuationService;
+use App\Domain\Research\Services\ResearchCenterService;
 use App\Domain\TradingSignals\Services\SmartEntryExitService;
 use App\Models\Exchange;
 use App\Models\IndexValueDaily;
@@ -128,6 +130,8 @@ class StockController extends Controller
         TechnicalIndicatorService $technicalsService,
         MarketClockService $clock,
         PortfolioValuationService $valuation,
+        NewsroomService $newsroom,
+        ResearchCenterService $research,
     ): Response {
         $exchangeModel = Exchange::query()
             ->with('holidays')
@@ -282,6 +286,8 @@ class StockController extends Controller
         $exCode = strtoupper($exchangeModel->code);
         $tradingCosts = config("nadi.trading_costs.{$exCode}") ?? config('nadi.trading_costs.DEFAULT');
         $holdingStatus = $valuation->holdingStatusForInstrument($request->user(), $instrument);
+        $relatedNews = $newsroom->forInstrument($instrument, 5);
+        $researchNotes = $research->forInstrument($request->user(), $instrument, 5);
 
         return Inertia::render('stocks/show', [
             'instrument' => [
@@ -443,6 +449,8 @@ class StockController extends Controller
             'signalHistory' => $signalHistory,
             'tradingCosts' => $tradingCosts,
             'holdingStatus' => $holdingStatus,
+            'relatedNews' => $relatedNews,
+            'researchNotes' => $researchNotes,
             'inWatchlist' => $inWatchlist,
         ]);
     }

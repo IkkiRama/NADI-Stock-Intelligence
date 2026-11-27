@@ -1,7 +1,7 @@
 <?php
 
 return [
-    'version' => '0.7.0-phase7',
+    'version' => '0.8.0-phase8',
 
     'locales' => ['id', 'en'],
 
@@ -63,5 +63,15 @@ return [
         'CNY' => '0.0200',
         'HKD' => '0.0400',
         'DEFAULT' => '0.0450',
+    ],
+
+    // Reference statutory dividend withholding rates (decimal fractions; user-overridable)
+    'dividend_withholding_tax' => [
+        'ID' => '0.10',
+        'US' => '0.15',
+        'SG' => '0.00',
+        'CN' => '0.10',
+        'HK' => '0.00',
+        'DEFAULT' => '0.10',
     ],
 ];

@@ -200,6 +200,28 @@ interface StockShowProps {
         unrealized_pnl_pct: string | null;
         accounts: Array<{ account_id: number; account_name: string; quantity: string; cost_per_share: string }>;
     } | null;
+    relatedNews?: Array<{
+        id: number;
+        slug: string;
+        title: string;
+        summary: string;
+        source_name: string;
+        category: string;
+        impact_tag: string;
+        published_at: string | null;
+        is_demo: boolean;
+    }>;
+    researchNotes?: Array<{
+        id: number;
+        title: string;
+        template_type: string;
+        stance: string;
+        conviction: string;
+        target_price: string | null;
+        target_currency: string | null;
+        implied_upside_pct: string | null;
+        is_demo: boolean;
+    }>;
     inWatchlist: boolean;
 }
 
@@ -221,6 +243,8 @@ export default function StockShow({
     signalHistory,
     tradingCosts,
     holdingStatus,
+    relatedNews = [],
+    researchNotes = [],
     inWatchlist,
 }: StockShowProps) {
     const { t, locale } = useT();
@@ -963,9 +987,74 @@ export default function StockShow({
                     )}
                 </section>
 
-                {/* Future Phases */}
-                <div className="grid gap-4 md:grid-cols-2">
-                    <ModuleEmptyState title={t('stocks.section.news')} description={t('planned.newsroom.desc')} phase={8} slug="newsroom" />
+                {/* News, Personal Research & Broker Intelligence */}
+                <div className="grid gap-4 lg:grid-cols-3">
+                    <section className="bg-card border-border rounded-md border p-4 space-y-2.5">
+                        <div className="flex items-center justify-between">
+                            <h2 className="text-sm font-semibold">{t('stocks.section.news')}</h2>
+                            <Link
+                                href={`/newsroom?symbol=${instrument.symbol}`}
+                                className="text-muted-foreground hover:text-foreground text-xs underline-offset-4 hover:underline"
+                            >
+                                {t('app.view_all')}
+                            </Link>
+                        </div>
+                        {relatedNews.length === 0 ? (
+                            <p className="text-muted-foreground text-xs">{t('news.empty.title')}</p>
+                        ) : (
+                            <div className="divide-border divide-y">
+                                {relatedNews.map((item) => (
+                                    <Link
+                                        key={item.id}
+                                        href={`/newsroom?article=${item.slug}`}
+                                        className="hover:bg-muted/30 block py-2 text-xs transition-colors"
+                                    >
+                                        <div className="flex items-center justify-between gap-2 text-[11px]">
+                                            <span className="text-muted-foreground">{item.source_name}</span>
+                                            {item.is_demo && <DemoBadge />}
+                                        </div>
+                                        <p className="mt-0.5 font-medium leading-snug">{item.title}</p>
+                                    </Link>
+                                ))}
+                            </div>
+                        )}
+                    </section>
+
+                    <section className="bg-card border-border rounded-md border p-4 space-y-2.5">
+                        <div className="flex items-center justify-between">
+                            <h2 className="text-sm font-semibold">{t('stocks.section.research')}</h2>
+                            <Link
+                                href={`/research-center?symbol=${instrument.symbol}`}
+                                className="text-muted-foreground hover:text-foreground text-xs underline-offset-4 hover:underline"
+                            >
+                                {t('app.view_all')}
+                            </Link>
+                        </div>
+                        {researchNotes.length === 0 ? (
+                            <p className="text-muted-foreground text-xs">{t('research.empty.title')}</p>
+                        ) : (
+                            <div className="divide-border divide-y">
+                                {researchNotes.map((note) => (
+                                    <Link
+                                        key={note.id}
+                                        href={`/research-center?note=${note.id}`}
+                                        className="hover:bg-muted/30 block py-2 text-xs transition-colors"
+                                    >
+                                        <div className="flex items-center justify-between gap-2 text-[11px]">
+                                            <span className="bg-muted rounded px-1.5 py-0.5">
+                                                {t(`research.stance.${note.stance}`)}
+                                            </span>
+                                            {note.implied_upside_pct !== null && (
+                                                <ChangeBadge changePct={note.implied_upside_pct} />
+                                            )}
+                                        </div>
+                                        <p className="mt-0.5 font-medium leading-snug">{note.title}</p>
+                                    </Link>
+                                ))}
+                            </div>
+                        )}
+                    </section>
+
                     <ModuleEmptyState title={t('stocks.section.broker')} description={t('planned.broker_intelligence.desc')} phase={10} slug="broker-intelligence" />
                 </div>
             </div>

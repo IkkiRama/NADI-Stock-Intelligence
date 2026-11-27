@@ -4,7 +4,9 @@ namespace App\Domain\Instruments\Services;
 
 use App\Models\Exchange;
 use App\Models\Instrument;
+use App\Models\NewsArticle;
 use App\Models\RecentView;
+use App\Models\ResearchNote;
 use App\Models\SearchHistory;
 use App\Models\StockIndex;
 use App\Models\User;
@@ -28,6 +30,8 @@ final class GlobalSearchService
                 'stocks' => [],
                 'indices' => [],
                 'exchanges' => [],
+                'articles' => [],
+                'research' => [],
                 'pages' => $this->searchPages('', $lang),
             ];
         }
@@ -37,6 +41,8 @@ final class GlobalSearchService
         $stocks = $this->searchStocks($q);
         $indices = $this->searchIndices($q);
         $exchanges = $this->searchExchanges($q);
+        $articles = $this->searchArticles($q);
+        $research = $this->searchResearch($user, $q);
         $pages = $this->searchPages($q, $lang);
 
         return [
@@ -46,6 +52,8 @@ final class GlobalSearchService
             'stocks' => $stocks,
             'indices' => $indices,
             'exchanges' => $exchanges,
+            'articles' => $articles,
+            'research' => $research,
             'pages' => $pages,
         ];
     }
@@ -238,7 +246,10 @@ final class GlobalSearchService
             ['key' => 'nav.entry_exit', 'href' => '/entry-exit', 'phase' => 3, 'status' => 'available'],
             ['key' => 'nav.portfolio', 'href' => '/portfolio', 'phase' => 4, 'status' => 'available'],
             ['key' => 'nav.portfolio_analytics', 'href' => '/portfolio-analytics', 'phase' => 6, 'status' => 'available'],
+            ['key' => 'nav.dividends', 'href' => '/dividends', 'phase' => 8, 'status' => 'available'],
             ['key' => 'nav.risk_rebalancing', 'href' => '/risk-rebalancing', 'phase' => 7, 'status' => 'available'],
+            ['key' => 'nav.newsroom', 'href' => '/newsroom', 'phase' => 8, 'status' => 'available'],
+            ['key' => 'nav.research_center', 'href' => '/research-center', 'phase' => 8, 'status' => 'available'],
             ['key' => 'nav.alerts_calendar', 'href' => '/alerts-calendar', 'phase' => 3, 'status' => 'available'],
             ['key' => 'nav.calculators', 'href' => '/calculators', 'phase' => 4, 'status' => 'available'],
             ['key' => 'nav.settings', 'href' => '/settings/preferences', 'phase' => 1, 'status' => 'available'],
@@ -268,6 +279,64 @@ final class GlobalSearchService
         }
 
         return array_slice($matched, 0, 6);
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function searchArticles(string $q): array
+    {
+        $like = '%'.addcslashes($q, '%_\\').'%';
+
+        return NewsArticle::query()
+            ->where(function ($sub) use ($like): void {
+                $sub->where('title', 'like', $like)
+                    ->orWhere('summary', 'like', $like)
+                    ->orWhere('source_name', 'like', $like);
+            })
+            ->orderByDesc('published_at')
+            ->limit(5)
+            ->get(['id', 'slug', 'title', 'source_name', 'category', 'is_demo'])
+            ->map(fn (NewsArticle $a): array => [
+                'id' => $a->id,
+                'title' => $a->title,
+                'source_name' => $a->source_name,
+                'category' => $a->category,
+                'is_demo' => (bool) $a->is_demo,
+                'href' => '/newsroom?article='.$a->slug,
+            ])
+            ->all();
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function searchResearch(User $user, string $q): array
+    {
+        $like = '%'.addcslashes($q, '%_\\').'%';
+
+        return ResearchNote::query()
+            ->with('instrument:id,symbol')
+            ->where('user_id', $user->id)
+            ->where(function ($sub) use ($like): void {
+                $sub->where('title', 'like', $like)
+                    ->orWhere('summary', 'like', $like)
+                    ->orWhere('thesis_body', 'like', $like)
+                    ->orWhereHas('instrument', fn ($iq) => $iq->where('symbol', 'like', $like));
+            })
+            ->orderByDesc('is_pinned')
+            ->orderByDesc('updated_at')
+            ->limit(5)
+            ->get(['id', 'instrument_id', 'title', 'stance', 'template_type', 'is_demo'])
+            ->map(fn (ResearchNote $n): array => [
+                'id' => $n->id,
+                'title' => $n->title,
+                'symbol' => $n->instrument?->symbol,
+                'stance' => $n->stance,
+                'is_demo' => (bool) $n->is_demo,
+                'href' => '/research-center?note='.$n->id,
+            ])
+            ->all();
     }
 
     /**

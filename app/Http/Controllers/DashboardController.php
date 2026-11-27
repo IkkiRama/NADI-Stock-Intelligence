@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Domain\MarketData\Services\MarketOverviewService;
+use App\Domain\Newsroom\Services\NewsroomService;
 use App\Domain\Portfolio\Services\PortfolioValuationService;
 use App\Models\AlertEvent;
 use App\Models\CorporateAction;
@@ -17,8 +18,12 @@ use Inertia\Response;
 
 class DashboardController extends Controller
 {
-    public function index(Request $request, MarketOverviewService $overview, PortfolioValuationService $valuation): Response
-    {
+    public function index(
+        Request $request,
+        MarketOverviewService $overview,
+        PortfolioValuationService $valuation,
+        NewsroomService $newsroom,
+    ): Response {
         $user = $request->user();
         $user->loadMissing('settings');
 
@@ -132,6 +137,7 @@ class DashboardController extends Controller
             ->count();
 
         $portfolioSummary = $valuation->summarize($user)['summary'];
+        $curatedNews = $newsroom->latestForDashboard($user, 5);
 
         return Inertia::render('dashboard', [
             'indexCards' => $overview->indexCards(),
@@ -143,6 +149,7 @@ class DashboardController extends Controller
             'portfolioSummary' => $portfolioSummary,
             'safetyWarnings' => $safetyWarnings,
             'recentSignals' => $recentSignals,
+            'curatedNews' => $curatedNews,
             'upcomingEvents' => $upcomingEvents,
             'unreadAlertCount' => $unreadAlertCount,
             'exchanges' => Exchange::query()->where('is_active', true)->orderBy('id')->get(['code', 'name', 'country_code']),
